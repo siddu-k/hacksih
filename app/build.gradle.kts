@@ -1,8 +1,7 @@
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.android)
-    id("com.google.gms.google-services")
-    kotlin("plugin.serialization") version "1.9.22"
+    kotlin("plugin.serialization") version "2.4.20"
 }
 
 android {
@@ -18,6 +17,16 @@ android {
         versionName = "1.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
+
+        externalNativeBuild {
+            cmake {
+                cppFlags("")
+            }
+        }
+        
+        ndk {
+            abiFilters += listOf("arm64-v8a", "armeabi-v7a", "x86_64")
+        }
         
         // Disable ALL compression in APK
         packaging {
@@ -25,7 +34,13 @@ android {
                 useLegacyPackaging = true
             }
             resources {
-                excludes += listOf("/META-INF/{AL2.0,LGPL2.1}")
+                excludes += listOf(
+                    "/META-INF/{AL2.0,LGPL2.1}",
+                    "META-INF/INDEX.LIST",
+                    "META-INF/DEPENDENCIES",
+                    "META-INF/LICENSE",
+                    "META-INF/NOTICE"
+                )
             }
         }
     }
@@ -51,14 +66,14 @@ android {
             
             // Disable ALL compression and optimization
             isCrunchPngs = false  // Don't optimize PNGs
-            isZipAlignEnabled = false  // Disable zip alignment
+            // NOTE: isZipAlignEnabled removed — deprecated no-op (AGP always aligns).
             
             // Disable all optimizations
             isPseudoLocalesEnabled = false
             
             // Disable code optimizations - use no-op proguard
             proguardFiles(
-                getDefaultProguardFile("proguard-android.txt"),
+                getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
             )
             
@@ -95,11 +110,18 @@ android {
         sourceCompatibility = JavaVersion.VERSION_17
         targetCompatibility = JavaVersion.VERSION_17
     }
-    kotlinOptions {
-        jvmTarget = "17"
+    kotlin {
+        compilerOptions {
+            jvmTarget.set(org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_17)
+        }
     }
     buildFeatures {
         viewBinding = true
+    }
+    externalNativeBuild {
+        cmake {
+            path = file("src/main/cpp/CMakeLists.txt")
+        }
     }
 }
 
@@ -110,31 +132,12 @@ dependencies {
     implementation(libs.androidx.appcompat)
     implementation(libs.material)
     
-    // Ktor HTTP client
-    implementation("io.ktor:ktor-client-android:2.3.7")
-    implementation("io.ktor:ktor-client-okhttp:2.3.7")
-    implementation("io.ktor:ktor-client-content-negotiation:2.3.7")
-    implementation("io.ktor:ktor-serialization-kotlinx-json:2.3.7")
-
-    // Supabase dependencies (latest stable versions)
-    implementation(platform("io.github.jan-tennert.supabase:bom:2.5.4"))
-    implementation("io.github.jan-tennert.supabase:postgrest-kt")
-    implementation("io.github.jan-tennert.supabase:gotrue-kt")
-    implementation("io.github.jan-tennert.supabase:realtime-kt")
-    implementation("io.github.jan-tennert.supabase:storage-kt")  // For session persistence
-    implementation("io.ktor:ktor-client-android:2.3.12")
-    
     // Coroutines for async operations
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.7.3")
     
     // Lifecycle components
     implementation("androidx.lifecycle:lifecycle-runtime-ktx:2.7.0")
     implementation("androidx.lifecycle:lifecycle-viewmodel-ktx:2.7.0")
-    
-    // Firebase FCM for push notifications
-    implementation(platform("com.google.firebase:firebase-bom:33.5.1"))
-    implementation("com.google.firebase:firebase-messaging-ktx")
-    implementation("com.google.firebase:firebase-analytics-ktx")
     
     // Google Play Services for location and maps
     implementation("com.google.android.gms:play-services-location:21.3.0")
@@ -148,7 +151,7 @@ dependencies {
     implementation("androidx.camera:camera-camera2:1.3.1")
     implementation("androidx.camera:camera-lifecycle:1.3.1")
     
-    // Kotlinx Serialization
+    // Kotlinx Serialization for local JSON
     implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.6.3")
     
     // Security Crypto for encrypted SharedPreferences
@@ -161,19 +164,14 @@ dependencies {
     // DrawerLayout
     implementation("androidx.drawerlayout:drawerlayout:1.2.0")
     
-    // OkHttp for API calls
+    // OkHttp for local model downloading
     implementation("com.squareup.okhttp3:okhttp:4.12.0")
     
     // WorkManager for background tasks
     implementation("androidx.work:work-runtime-ktx:2.9.0")
 
-    // QR Code Generation and Scanning
-    implementation("com.google.zxing:core:3.5.3")
-    implementation("com.journeyapps:zxing-android-embedded:4.3.0")
-    
-    // ONNX Runtime for local AI (Phi-3)
-    implementation("com.microsoft.onnxruntime:onnxruntime-android:1.17.1")
-    implementation("com.microsoft.onnxruntime:onnxruntime-extensions-android:0.10.0")
+    // LocalBroadcastManager
+    implementation("androidx.localbroadcastmanager:localbroadcastmanager:1.1.0")
 
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)

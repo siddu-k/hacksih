@@ -233,6 +233,13 @@ class BleGuardianService : Service() {
             val finalLon = if (useHardwareGps && esp32Longitude != null) esp32Longitude else mobileLoc?.longitude
 
             Log.d(TAG, "Attempting SOS Alert Loop Trigger...")
+            // Capture evidence photos locally
+            try {
+                com.sriox.vasateysec.utils.CameraManager.captureEmergencyPhotos(this@BleGuardianService)
+            } catch (ce: Exception) {
+                Log.w(TAG, "Hardware photo capture failed: ${ce.message}")
+            }
+
             // Pass isHardware = true to apply hardware interval and bypass voice toggles
             SmsHelper.sendEmergencySms(this@BleGuardianService, finalLat, finalLon, isHardware = true)
         } catch (e: Exception) {

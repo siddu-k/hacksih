@@ -27,69 +27,10 @@ class MainActivity : AppCompatActivity() {
         binding.stopButton.setOnClickListener { stopListening() }
 
         checkPermissions()
-        
-        // Ensure FCM token is synced on app startup
-        com.sriox.vasateysec.utils.FCMTokenManager.initializeFCM(this)
-        
-        // Schedule periodic location updates
-        scheduleLocationUpdates()
-        
-        // Schedule periodic FCM token refresh
-        scheduleFCMTokenRefresh()
     }
 
     override fun onResume() {
         super.onResume()
-        // Refresh FCM token whenever app comes to foreground
-        com.sriox.vasateysec.utils.FCMTokenManager.initializeFCM(this)
-    }
-
-    private fun scheduleLocationUpdates() {
-        val workManager = androidx.work.WorkManager.getInstance(applicationContext)
-        
-        // Create periodic work request (runs every 30 minutes)
-        val locationUpdateRequest = androidx.work.PeriodicWorkRequestBuilder<com.sriox.vasateysec.workers.LocationUpdateWorker>(
-            30, java.util.concurrent.TimeUnit.MINUTES
-        )
-            .setConstraints(
-                androidx.work.Constraints.Builder()
-                    .setRequiredNetworkType(androidx.work.NetworkType.CONNECTED)
-                    .build()
-            )
-            .build()
-
-        // Enqueue with unique name (replaces existing if already scheduled)
-        workManager.enqueueUniquePeriodicWork(
-            "location_update_worker",
-            androidx.work.ExistingPeriodicWorkPolicy.KEEP,
-            locationUpdateRequest
-        )
-        
-        android.util.Log.d("MainActivity", "Scheduled periodic location updates every 30 minutes")
-    }
-
-    private fun scheduleFCMTokenRefresh() {
-        val workManager = androidx.work.WorkManager.getInstance(applicationContext)
-        
-        // Create periodic work request (runs every 7 days)
-        val tokenRefreshRequest = androidx.work.PeriodicWorkRequestBuilder<com.sriox.vasateysec.workers.FCMTokenRefreshWorker>(
-            7, java.util.concurrent.TimeUnit.DAYS
-        )
-            .setConstraints(
-                androidx.work.Constraints.Builder()
-                    .setRequiredNetworkType(androidx.work.NetworkType.CONNECTED)
-                    .build()
-            )
-            .build()
-
-        // Enqueue with unique name
-        workManager.enqueueUniquePeriodicWork(
-            "fcm_token_refresh_worker",
-            androidx.work.ExistingPeriodicWorkPolicy.KEEP,
-            tokenRefreshRequest
-        )
-        
-        android.util.Log.d("MainActivity", "Scheduled periodic FCM token refresh every 7 days")
     }
 
     private fun checkPermissions() {

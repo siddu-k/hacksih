@@ -15,9 +15,9 @@ object SessionManager {
     private const val KEY_USER_ID = "user_id"
     private const val KEY_USER_EMAIL = "user_email"
     private const val KEY_USER_NAME = "user_name"
+    private const val KEY_USER_PHONE = "user_phone"
     private const val KEY_IS_LOGGED_IN = "is_logged_in"
     private const val KEY_LAST_LOGIN = "last_login"
-    private const val KEY_FCM_TOKEN = "fcm_token"
     
     private lateinit var prefs: SharedPreferences
     
@@ -25,36 +25,30 @@ object SessionManager {
      * Initialize the session manager with encrypted shared preferences
      */
     fun initialize(context: Context) {
-        // ALWAYS use standard SharedPreferences (not encrypted) for reliability
-        // EncryptedSharedPreferences has issues in release builds
         try {
             Log.d(TAG, "Initializing SessionManager with standard SharedPreferences...")
             prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
             Log.d(TAG, "SessionManager initialized successfully")
-            Log.d(TAG, "Current session state - isLoggedIn: ${isLoggedIn()}, userId: ${getUserId()}")
         } catch (e: Exception) {
             Log.e(TAG, "CRITICAL: Failed to initialize SessionManager", e)
-            Log.e(TAG, "Error type: ${e.javaClass.name}, message: ${e.message}")
-            // Last resort fallback
             prefs = context.getSharedPreferences("vasatey_backup_prefs", Context.MODE_PRIVATE)
-            Log.d(TAG, "Using backup prefs - isLoggedIn: ${isLoggedIn()}, userId: ${getUserId()}")
         }
     }
     
     /**
      * Save user session
      */
-    fun saveSession(userId: String, email: String, name: String) {
-        Log.d(TAG, "Saving session for user: $email (ID: $userId)")
+    fun saveSession(userId: String, email: String, name: String, phone: String = "") {
+        Log.d(TAG, "Saving session for user: $name (ID: $userId, Phone: $phone)")
         prefs.edit().apply {
             putString(KEY_USER_ID, userId)
             putString(KEY_USER_EMAIL, email)
             putString(KEY_USER_NAME, name)
+            putString(KEY_USER_PHONE, phone)
             putBoolean(KEY_IS_LOGGED_IN, true)
             putLong(KEY_LAST_LOGIN, System.currentTimeMillis())
             apply()
         }
-        Log.d(TAG, "Session saved successfully. Verification - isLoggedIn: ${isLoggedIn()}, userId: ${getUserId()}")
     }
     
     /**
@@ -63,9 +57,7 @@ object SessionManager {
     fun isLoggedIn(): Boolean {
         val isLoggedIn = prefs.getBoolean(KEY_IS_LOGGED_IN, false)
         val userId = prefs.getString(KEY_USER_ID, null)
-        val result = isLoggedIn && !userId.isNullOrEmpty()
-        Log.d(TAG, "isLoggedIn check: $result (flag: $isLoggedIn, userId: ${userId?.take(8)}...)")
-        return result
+        return isLoggedIn && !userId.isNullOrEmpty()
     }
     
     /**
@@ -88,27 +80,19 @@ object SessionManager {
     fun getUserName(): String? {
         return prefs.getString(KEY_USER_NAME, null)
     }
+
+    /**
+     * Get current user phone
+     */
+    fun getUserPhone(): String? {
+        return prefs.getString(KEY_USER_PHONE, null)
+    }
     
     /**
      * Get last login timestamp
      */
     fun getLastLoginTime(): Long {
         return prefs.getLong(KEY_LAST_LOGIN, 0)
-    }
-    
-    /**
-     * Save FCM token
-     */
-    fun saveFCMToken(token: String) {
-        prefs.edit().putString(KEY_FCM_TOKEN, token).apply()
-        Log.d(TAG, "FCM token saved")
-    }
-    
-    /**
-     * Get FCM token
-     */
-    fun getFCMToken(): String? {
-        return prefs.getString(KEY_FCM_TOKEN, null)
     }
     
     /**
@@ -124,5 +108,12 @@ object SessionManager {
      */
     fun updateUserName(name: String) {
         prefs.edit().putString(KEY_USER_NAME, name).apply()
+    }
+
+    /**
+     * Update user phone
+     */
+    fun updateUserPhone(phone: String) {
+        prefs.edit().putString(KEY_USER_PHONE, phone).apply()
     }
 }

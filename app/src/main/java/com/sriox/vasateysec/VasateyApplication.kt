@@ -30,9 +30,6 @@ class VasateyApplication : Application() {
             // Initialize SessionManager
             SessionManager.initialize(this)
             
-            // Initialize Supabase client with application context
-            SupabaseClient.initialize(this)
-            
         } catch (e: Exception) {
             Log.e("VasateyApplication", "Error during initialization", e)
         }

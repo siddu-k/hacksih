@@ -37,18 +37,6 @@
 -keep class com.sriox.vasateysec.models.** { *; }
 -keepclassmembers class com.sriox.vasateysec.models.** { *; }
 
-# ===== Supabase SDK =====
--keep class io.github.jan.supabase.** { *; }
--keep interface io.github.jan.supabase.** { *; }
--keepclassmembers class io.github.jan.supabase.** { *; }
-
-# Keep Ktor classes used by Supabase
--keep class io.ktor.** { *; }
--keepclassmembers class io.ktor.** { *; }
-
-# Ignore warnings for optional Ktor dependencies
--dontwarn org.slf4j.**
-
 # ===== OkHttp =====
 -dontwarn okhttp3.**
 -dontwarn okio.**
@@ -76,10 +64,7 @@
 -keepclassmembers class com.sriox.vasateysec.utils.SessionManager { *; }
 -keep class com.sriox.vasateysec.utils.** { *; }
 
-# ===== Firebase FCM =====
--keep class com.google.firebase.** { *; }
 -keep class com.google.android.gms.** { *; }
--dontwarn com.google.firebase.**
 -dontwarn com.google.android.gms.**
 
 # ===== Kotlin Coroutines =====

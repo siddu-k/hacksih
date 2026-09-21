@@ -2,13 +2,13 @@ package com.sriox.vasateysec.utils
 
 import android.Manifest
 import android.app.Activity
+import android.content.Intent
 import android.content.pm.PackageManager
 import android.widget.Toast
 import androidx.appcompat.app.AlertDialog
 import androidx.core.app.ActivityCompat
 import androidx.lifecycle.LifecycleOwner
 import androidx.lifecycle.lifecycleScope
-import com.sriox.vasateysec.SupabaseClient
 import kotlinx.coroutines.launch
 
 object SOSHelper {
@@ -28,7 +28,17 @@ object SOSHelper {
             .show()
     }
     
+    private var lastManualAlertTime = 0L
+
     private fun triggerEmergencyAlert(activity: Activity) {
+        val now = System.currentTimeMillis()
+        if (now - lastManualAlertTime < 5000L) {
+            val waitSec = ((5000L - (now - lastManualAlertTime)) / 1000) + 1
+            Toast.makeText(activity, "Alert already sent. Please wait ${waitSec}s.", Toast.LENGTH_SHORT).show()
+            return
+        }
+        lastManualAlertTime = now
+
         if (activity !is LifecycleOwner) {
             Toast.makeText(activity, "Unable to trigger alert", Toast.LENGTH_SHORT).show()
             return
@@ -60,13 +70,16 @@ object SOSHelper {
                 
                 // Show progress
                 Toast.makeText(activity, "📸 Capturing photos and sending alert...", Toast.LENGTH_SHORT).show()
+                val photos = CameraManager.captureEmergencyPhotos(activity)
                 
                 // Send emergency alert using AlertManager
                 val result = AlertManager.sendEmergencyAlert(
                     context = activity,
                     latitude = latitude,
                     longitude = longitude,
-                    locationAccuracy = accuracy
+                    locationAccuracy = accuracy,
+                    frontPhotoFile = photos.frontPhoto,
+                    backPhotoFile = photos.backPhoto
                 )
                 
                 if (result.isSuccess) {
@@ -75,6 +88,9 @@ object SOSHelper {
                         "✅ Emergency alert sent to all guardians!",
                         Toast.LENGTH_LONG
                     ).show()
+                    val triggerIntent = Intent("com.sriox.vasateysec.ALERT_TRIGGERED")
+                    androidx.localbroadcastmanager.content.LocalBroadcastManager.getInstance(activity).sendBroadcast(triggerIntent)
+                    activity.sendBroadcast(triggerIntent)
                 } else {
                     Toast.makeText(
                         activity,

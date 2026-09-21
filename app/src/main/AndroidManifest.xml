@@ -17,7 +17,11 @@
 
     <!-- SMS and CALL Permission -->
     <uses-permission android:name="android.permission.SEND_SMS" />
+    <uses-permission android:name="android.permission.RECEIVE_SMS" />
+    <uses-permission android:name="android.permission.READ_SMS" />
     <uses-permission android:name="android.permission.CALL_PHONE" />
+    <uses-permission android:name="android.permission.READ_PHONE_STATE" />
+    <uses-permission android:name="android.permission.VIBRATE" />
 
     <!-- Permission to bypass background activity restrictions -->
     <uses-permission android:name="android.permission.SYSTEM_ALERT_WINDOW" />
@@ -40,6 +44,8 @@
     <uses-feature android:name="android.hardware.camera.front" android:required="false" />
 
     <uses-permission android:name="android.permission.USE_FULL_SCREEN_INTENT" />
+    <uses-permission android:name="android.permission.WAKE_LOCK" />
+    <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
 
     <application
         android:name=".VasateyApplication"
@@ -70,41 +76,37 @@
         <activity android:name=".AddSmsContactActivity" android:exported="false" android:theme="@style/Theme.Vasateysec" />
         <activity android:name=".EditProfileActivity" android:exported="false" />
         <activity android:name=".AlertHistoryActivity" android:exported="false" />
-        <activity android:name=".HelpRequestActivity" android:exported="true" android:launchMode="singleTask">
-            <intent-filter>
-                <action android:name="com.sriox.vasateysec.SHOW_EMERGENCY_ALERT" />
-                <category android:name="android.intent.category.DEFAULT" />
-            </intent-filter>
-        </activity>
         <activity android:name=".GuardianMapActivity" android:exported="false" android:theme="@style/Theme.Vasateysec" />
         <activity android:name=".SettingsActivity" android:exported="false" android:theme="@style/Theme.Vasateysec" />
-        <activity android:name=".EmergencyAlertViewerActivity" android:exported="true" android:launchMode="singleTask" />
-        <activity android:name=".AlertConfirmationActivity" android:exported="true" android:launchMode="singleTask" />
-        <activity android:name=".MyAlertsActivity" android:exported="false" />
-        <activity android:name=".AlertDetailActivity" android:exported="false" />
-        <activity android:name=".SafePlacesActivity" android:exported="false" android:theme="@style/Theme.Vasateysec" />
-        <activity android:name=".SafePlacesSelectionActivity" android:exported="false" android:theme="@style/Theme.Vasateysec" />
-        <activity android:name=".NearbyPeopleActivity" android:exported="false" android:theme="@style/Theme.Vasateysec" />
-        <activity android:name=".ContactDetailActivity" android:exported="false" android:theme="@style/Theme.Vasateysec" />
-        <activity android:name=".PlaceReviewsActivity" android:exported="false" android:theme="@style/Theme.Vasateysec" />
+        <activity android:name=".EmergencyAlertViewerActivity" android:exported="true" android:launchMode="singleTask" android:showWhenLocked="true" android:turnScreenOn="true" android:theme="@style/Theme.Vasateysec" />
         <activity android:name=".AiChatActivity" android:exported="false" android:theme="@style/Theme.Vasateysec" />
         <activity android:name=".BleDeviceScanActivity" android:exported="false" android:theme="@style/Theme.Vasateysec" />
 
-        <!-- Emergency QR Profile Activity -->
-        <activity android:name=".EmergencyProfileActivity" android:exported="false" android:theme="@style/Theme.Vasateysec" />
-
         <service android:name=".VoskWakeWordService" android:foregroundServiceType="microphone" android:exported="false" />
-        <service android:name=".services.VasateyFCMService" android:exported="false">
-            <intent-filter>
-                <action android:name="com.google.firebase.MESSAGING_EVENT" />
-            </intent-filter>
-        </service>
-
         <service android:name=".services.BleGuardianService" android:foregroundServiceType="connectedDevice" android:exported="false" />
 
         <receiver android:name=".utils.SmsSentReceiver" android:exported="false">
             <intent-filter>
                 <action android:name="com.sriox.vasateysec.SMS_SENT" />
+            </intent-filter>
+        </receiver>
+
+        <receiver android:name=".utils.EmergencySmsReceiver" android:exported="true" android:permission="android.permission.BROADCAST_SMS">
+            <intent-filter android:priority="999">
+                <action android:name="android.provider.Telephony.SMS_RECEIVED" />
+            </intent-filter>
+        </receiver>
+
+        <receiver android:name=".utils.AlarmStopReceiver" android:exported="false">
+            <intent-filter>
+                <action android:name="com.sriox.vasateysec.STOP_ALARM" />
+            </intent-filter>
+        </receiver>
+
+        <receiver android:name=".utils.BootReceiver" android:exported="true">
+            <intent-filter>
+                <action android:name="android.intent.action.BOOT_COMPLETED" />
+                <action android:name="android.intent.action.QUICKBOOT_POWERON" />
             </intent-filter>
         </receiver>
 

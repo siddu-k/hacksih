@@ -23,19 +23,84 @@
             <!-- Gradient Header -->
             <FrameLayout
                 android:layout_width="match_parent"
-                android:layout_height="220dp"
+                android:layout_height="wrap_content"
+                android:minHeight="230dp"
                 android:background="@drawable/gradient_header_golden">
 
                 <LinearLayout
                     android:layout_width="match_parent"
-                    android:layout_height="match_parent"
+                    android:layout_height="wrap_content"
                     android:orientation="vertical"
-                    android:padding="24dp"
+                    android:paddingTop="18dp"
+                    android:paddingBottom="16dp"
+                    android:paddingHorizontal="24dp"
                     android:gravity="center">
 
+                    <!-- Mobile Signal Strength & Cellular Monitoring Meter (Above Safety Logo) -->
+                    <LinearLayout
+                        android:id="@+id/layoutSignalMeter"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:orientation="horizontal"
+                        android:gravity="center_vertical"
+                        android:background="@drawable/bg_rounded_card"
+                        android:backgroundTint="#33000000"
+                        android:paddingHorizontal="12dp"
+                        android:paddingVertical="5dp"
+                        android:layout_marginBottom="8dp">
+
+                        <View
+                            android:id="@+id/dotSignalIndicator"
+                            android:layout_width="8dp"
+                            android:layout_height="8dp"
+                            android:background="@drawable/bg_circle_status"
+                            android:backgroundTint="#00E676" />
+
+                        <TextView
+                            android:id="@+id/tvSignalMeter"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="📶 Signal: Initializing..."
+                            android:textColor="@color/text_primary"
+                            android:textSize="12sp"
+                            android:textStyle="bold"
+                            android:layout_marginStart="8dp" />
+                    </LinearLayout>
+
+                    <!-- Offline / Pending Queue Notice (Visible if offline or alerts are queued) -->
+                    <LinearLayout
+                        android:id="@+id/layoutQueueNotice"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:orientation="horizontal"
+                        android:gravity="center_vertical"
+                        android:background="@drawable/bg_rounded_card"
+                        android:backgroundTint="#4DFF5252"
+                        android:paddingHorizontal="12dp"
+                        android:paddingVertical="4dp"
+                        android:layout_marginBottom="6dp"
+                        android:visibility="gone"
+                        tools:visibility="visible">
+
+                        <ImageView
+                            android:layout_width="14dp"
+                            android:layout_height="14dp"
+                            android:src="@android:drawable/stat_notify_sync"
+                            android:tint="#FFFFFF" />
+
+                        <TextView
+                            android:id="@+id/tvQueueNoticeText"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="Offline: Alerts will queue locally"
+                            android:textColor="#FFFFFF"
+                            android:textSize="11sp"
+                            android:layout_marginStart="6dp" />
+                    </LinearLayout>
+
                     <ImageView
-                        android:layout_width="120dp"
-                        android:layout_height="120dp"
+                        android:layout_width="110dp"
+                        android:layout_height="110dp"
                         android:src="@drawable/logo"
                         android:scaleType="fitCenter" />
 
@@ -45,7 +110,7 @@
                         android:text="Safety Guardian"
                         android:textColor="@color/golden"
                         android:textSize="16sp"
-                        android:layout_marginTop="8dp" />
+                        android:layout_marginTop="6dp" />
                 </LinearLayout>
 
                 <!-- Hardware SOS Status Light -->
@@ -54,7 +119,7 @@
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:layout_gravity="top|start"
-                    android:layout_margin="20dp"
+                    android:layout_margin="16dp"
                     android:orientation="vertical"
                     android:background="@drawable/bg_rounded_card"
                     android:paddingHorizontal="12dp"
@@ -106,16 +171,40 @@
                     android:orientation="horizontal"
                     android:gravity="center_vertical">
 
-                    <!-- QR Scanner Button -->
-                    <ImageView
-                        android:id="@+id/btnQrScanner"
+                    <!-- Alert Queue Button with Badge -->
+                    <FrameLayout
+                        android:id="@+id/btnAlertQueue"
                         android:layout_width="40dp"
                         android:layout_height="40dp"
-                        android:src="@drawable/ic_qr_code_scanner"
-                        android:tint="@color/golden"
-                        android:padding="8dp"
+                        android:layout_marginEnd="6dp"
                         android:background="?attr/selectableItemBackgroundBorderless"
-                        android:contentDescription="Scan QR" />
+                        android:contentDescription="Pending Alerts Queue">
+
+                        <ImageView
+                            android:layout_width="26dp"
+                            android:layout_height="26dp"
+                            android:layout_gravity="center"
+                            android:src="@android:drawable/ic_menu_recent_history"
+                            android:tint="@color/golden" />
+
+                        <!-- Queue Count Badge -->
+                        <TextView
+                            android:id="@+id/tvQueueBadge"
+                            android:layout_width="18dp"
+                            android:layout_height="18dp"
+                            android:layout_gravity="top|end"
+                            android:layout_marginTop="2dp"
+                            android:layout_marginEnd="2dp"
+                            android:background="@drawable/bg_circle_status"
+                            android:backgroundTint="#FF3D00"
+                            android:gravity="center"
+                            android:text="0"
+                            android:textColor="#FFFFFF"
+                            android:textSize="10sp"
+                            android:textStyle="bold"
+                            android:visibility="gone"
+                            tools:visibility="visible" />
+                    </FrameLayout>
 
                     <!-- Logout Button -->
                     <ImageView
@@ -138,6 +227,73 @@
                 android:padding="20dp"
                 android:paddingBottom="100dp">
 
+                <!-- 40-Second Cancel Alert Banner (Auto-opens on SOS, hides after 40s) -->
+                <com.google.android.material.card.MaterialCardView
+                    android:id="@+id/cardCancelAlert"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginBottom="16dp"
+                    android:visibility="gone"
+                    app:cardBackgroundColor="#2D1111"
+                    app:cardCornerRadius="20dp"
+                    app:cardElevation="6dp"
+                    app:strokeWidth="2dp"
+                    app:strokeColor="#FF4444">
+
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:orientation="vertical"
+                        android:padding="16dp">
+
+                        <LinearLayout
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:orientation="horizontal"
+                            android:gravity="center_vertical">
+
+                            <TextView
+                                android:layout_width="0dp"
+                                android:layout_height="wrap_content"
+                                android:layout_weight="1"
+                                android:text="🚨 SOS Alert Sent!"
+                                android:textColor="#FF6B6B"
+                                android:textSize="16sp"
+                                android:textStyle="bold" />
+
+                            <TextView
+                                android:id="@+id/tvCancelCountdown"
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:text="40s"
+                                android:textColor="#FFD700"
+                                android:textSize="16sp"
+                                android:textStyle="bold" />
+                        </LinearLayout>
+
+                        <TextView
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:text="Tap below if you are safe. No password needed."
+                            android:textColor="#CCCCCC"
+                            android:textSize="13sp"
+                            android:layout_marginTop="4dp"
+                            android:layout_marginBottom="12dp" />
+
+                        <com.google.android.material.button.MaterialButton
+                            android:id="@+id/btnCancelAlert"
+                            android:layout_width="match_parent"
+                            android:layout_height="50dp"
+                            android:text="CANCEL ALERT (I AM SAFE)"
+                            android:textColor="#FFFFFF"
+                            android:textStyle="bold"
+                            app:backgroundTint="#D32F2F"
+                            app:cornerRadius="12dp"
+                            app:icon="@android:drawable/ic_menu_close_clear_cancel"
+                            app:iconTint="#FFFFFF" />
+                    </LinearLayout>
+                </com.google.android.material.card.MaterialCardView>
+
                 <!-- Alert Configuration Card -->
                 <com.google.android.material.card.MaterialCardView
                     android:layout_width="match_parent"
@@ -155,47 +311,6 @@
                         android:orientation="vertical"
                         android:padding="20dp">
 
-                        <!-- Network Alert Toggle -->
-                        <LinearLayout
-                            android:layout_width="match_parent"
-                            android:layout_height="wrap_content"
-                            android:orientation="horizontal"
-                            android:gravity="center_vertical">
-
-                            <ImageView
-                                android:layout_width="32dp"
-                                android:layout_height="32dp"
-                                android:src="@android:drawable/stat_sys_upload"
-                                android:tint="@color/golden" />
-
-                            <LinearLayout
-                                android:layout_width="0dp"
-                                android:layout_height="wrap_content"
-                                android:layout_weight="1"
-                                android:layout_marginStart="16dp"
-                                android:orientation="vertical">
-
-                                <TextView
-                                    android:layout_width="wrap_content"
-                                    android:layout_height="wrap_content"
-                                    android:text="Network Alert (FCM)"
-                                    android:textColor="@color/text_primary"
-                                    android:textSize="16sp"
-                                    android:textStyle="bold" />
-                            </LinearLayout>
-
-                            <com.google.android.material.switchmaterial.SwitchMaterial
-                                android:id="@+id/switchNetworkAlert"
-                                android:layout_width="wrap_content"
-                                android:layout_height="wrap_content"
-                                android:checked="true" />
-                        </LinearLayout>
-
-                        <View
-                            android:layout_width="match_parent"
-                            android:layout_height="1dp"
-                            android:background="#20FFFFFF"
-                            android:layout_marginVertical="12dp" />
 
                         <!-- Offline Alerts Section -->
                         <LinearLayout
@@ -433,237 +548,6 @@
                     </LinearLayout>
                 </com.google.android.material.card.MaterialCardView>
 
-                <!-- Safe Places Card -->
-                <com.google.android.material.card.MaterialCardView
-                    android:id="@+id/safePlacesCard"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:layout_marginBottom="16dp"
-                    app:cardBackgroundColor="#2A2A2A"
-                    app:cardCornerRadius="24dp"
-                    app:cardElevation="4dp"
-                    app:strokeWidth="1dp"
-                    app:strokeColor="#404040">
-
-                    <LinearLayout
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:orientation="horizontal"
-                        android:padding="20dp"
-                        android:gravity="center_vertical">
-
-                        <ImageView
-                            android:layout_width="48dp"
-                            android:layout_height="48dp"
-                            android:src="@drawable/ic_safe_place"
-                            android:tint="@color/golden"                                 android:padding="12dp"
-                                android:background="@drawable/bg_rounded_card" />
-
-                        <LinearLayout
-                            android:layout_width="0dp"
-                            android:layout_height="wrap_content"
-                            android:layout_weight="1"
-                            android:layout_marginStart="16dp"
-                            android:orientation="vertical">
-
-                            <TextView
-                                android:layout_width="wrap_content"
-                                android:layout_height="wrap_content"
-                                android:text="Near Safe Places"
-                                android:textColor="@color/text_primary"
-                                android:textSize="18sp"
-                                android:textStyle="bold" />
-
-                            <TextView
-                                android:layout_width="wrap_content"
-                                android:layout_height="wrap_content"
-                                android:text="Find shelter or add new safe spots"
-                                android:textColor="@color/text_secondary"
-                                android:textSize="14sp"
-                                android:layout_marginTop="4dp" />
-                        </LinearLayout>
-
-                        <ImageView
-                            android:layout_width="24dp"
-                            android:layout_height="24dp"
-                            android:src="@drawable/ic_arrow_forward"
-                            android:tint="@color/golden" />
-                    </LinearLayout>
-                </com.google.android.material.card.MaterialCardView>
-
-                <!-- Emergency QR Card -->
-                <com.google.android.material.card.MaterialCardView
-                    android:id="@+id/emergencyQrCard"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:layout_marginBottom="16dp"
-                    app:cardBackgroundColor="#2A2A2A"
-                    app:cardCornerRadius="24dp"
-                    app:cardElevation="4dp"
-                    app:strokeWidth="1dp"
-                    app:strokeColor="#404040">
-
-                    <LinearLayout
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:orientation="horizontal"
-                        android:padding="20dp"
-                        android:gravity="center_vertical">
-
-                        <ImageView
-                            android:layout_width="48dp"
-                            android:layout_height="48dp"
-                            android:src="@drawable/ic_qr_code_scanner"
-                            android:tint="@color/golden"
-                            android:padding="12dp"
-                            android:background="@drawable/bg_rounded_card" />
-
-                        <LinearLayout
-                            android:layout_width="0dp"
-                            android:layout_height="wrap_content"
-                            android:layout_weight="1"
-                            android:layout_marginStart="16dp"
-                            android:orientation="vertical">
-
-                            <TextView
-                                android:layout_width="wrap_content"
-                                android:layout_height="wrap_content"
-                                android:text="Emergency QR Profile"
-                                android:textColor="@color/text_primary"
-                                android:textSize="18sp"
-                                android:textStyle="bold" />
-
-                            <TextView
-                                android:layout_width="wrap_content"
-                                android:layout_height="wrap_content"
-                                android:text="Manage your medical and contact info"
-                                android:textColor="@color/text_secondary"
-                                android:textSize="14sp"
-                                android:layout_marginTop="4dp" />
-                        </LinearLayout>
-
-                        <ImageView
-                            android:layout_width="24dp"
-                            android:layout_height="24dp"
-                            android:src="@drawable/ic_arrow_forward"
-                            android:tint="@color/golden" />
-                    </LinearLayout>
-                </com.google.android.material.card.MaterialCardView>
-
-                <!-- Helpline Section -->
-                <com.google.android.material.card.MaterialCardView
-                    android:id="@+id/helplineCard"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:layout_marginBottom="16dp"
-                    app:cardBackgroundColor="#2A2A2A"
-                    app:cardCornerRadius="24dp"
-                    app:cardElevation="4dp"
-                    app:strokeWidth="1dp"
-                    app:strokeColor="#404040">
-
-                    <LinearLayout
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:orientation="vertical"
-                        android:padding="20dp">
-
-                        <LinearLayout
-                            android:id="@+id/helplineHeader"
-                            android:layout_width="match_parent"
-                            android:layout_height="wrap_content"
-                            android:orientation="horizontal"
-                            android:gravity="center_vertical"
-                            android:clickable="true"
-                            android:focusable="true">
-
-                            <ImageView
-                                android:layout_width="48dp"
-                                android:layout_height="48dp"
-                                android:src="@android:drawable/ic_menu_call"
-                                android:tint="@color/golden"                                 android:padding="12dp"
-                                android:background="@drawable/bg_rounded_card" />
-
-                            <LinearLayout
-                                android:layout_width="0dp"
-                                android:layout_height="wrap_content"
-                                android:layout_weight="1"
-                                android:layout_marginStart="16dp"
-                                android:orientation="vertical">
-
-                                <TextView
-                                    android:layout_width="wrap_content"
-                                    android:layout_height="wrap_content"
-                                    android:text="Emergency Helplines"
-                                    android:textColor="@color/text_primary"
-                                    android:textSize="18sp"
-                                    android:textStyle="bold" />
-
-                                <TextView
-                                    android:layout_width="wrap_content"
-                                    android:layout_height="wrap_content"
-                                    android:text="Tap to expand search"
-                                    android:textColor="@color/text_secondary"
-                                    android:textSize="14sp"
-                                    android:layout_marginTop="4dp" />
-                            </LinearLayout>
-
-                            <ImageView
-                                android:id="@+id/helplineArrow"
-                                android:layout_width="24dp"
-                                android:layout_height="24dp"
-                                android:src="@drawable/ic_arrow_down"
-                                android:tint="@color/golden" />
-                        </LinearLayout>
-
-                        <!-- Expandable Search Section -->
-                        <LinearLayout
-                            android:id="@+id/helplineExpandArea"
-                            android:layout_width="match_parent"
-                            android:layout_height="wrap_content"
-                            android:orientation="vertical"
-                            android:visibility="gone"
-                            android:layout_marginTop="16dp">
-
-                            <com.google.android.material.textfield.TextInputLayout
-                                android:layout_width="match_parent"
-                                android:layout_height="wrap_content"
-                                android:hint="Search helpline name..."
-                                android:textColorHint="@color/text_tertiary"
-                                app:hintTextColor="@color/golden"
-                                app:boxStrokeColor="@color/golden"
-                                app:startIconDrawable="@android:drawable/ic_menu_search"
-                                app:startIconTint="@color/golden"
-                                style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox">
-
-                                <com.google.android.material.textfield.TextInputEditText
-                                    android:id="@+id/etHelplineSearch"
-                                    android:layout_width="match_parent"
-                                    android:layout_height="wrap_content"
-                                    android:textColor="@color/text_primary"
-                                    android:maxLines="1"
-                                    android:inputType="text" />
-                            </com.google.android.material.textfield.TextInputLayout>
-
-                            <androidx.recyclerview.widget.RecyclerView
-                                android:id="@+id/rvHelplines"
-                                android:layout_width="match_parent"
-                                android:layout_height="200dp"
-                                android:layout_marginTop="8dp"
-                                android:visibility="gone" />
-
-                            <TextView
-                                android:id="@+id/tvHelplineNoResult"
-                                android:layout_width="wrap_content"
-                                android:layout_height="wrap_content"
-                                android:layout_gravity="center"
-                                android:layout_marginTop="20dp"
-                                android:text="No matching numbers found"
-                                android:textColor="@color/text_secondary"
-                                android:visibility="gone" />
-                        </LinearLayout>
-                    </LinearLayout>
-                </com.google.android.material.card.MaterialCardView>
 
                 <!-- Quick Actions Grid -->
                 <TextView

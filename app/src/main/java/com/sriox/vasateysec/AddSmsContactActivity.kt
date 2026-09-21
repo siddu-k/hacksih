@@ -7,14 +7,13 @@ import android.view.ViewGroup
 import android.widget.TextView
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
-import androidx.lifecycle.lifecycleScope
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import com.sriox.vasateysec.databinding.ActivityAddSmsContactBinding
 import com.sriox.vasateysec.models.SmsContact
-import io.github.jan.supabase.gotrue.auth
-import io.github.jan.supabase.postgrest.from
-import kotlinx.coroutines.launch
+import com.sriox.vasateysec.utils.SessionManager
+import com.sriox.vasateysec.utils.SmsHelper
+import java.util.UUID
 
 class AddSmsContactActivity : AppCompatActivity() {
 
@@ -57,49 +56,33 @@ class AddSmsContactActivity : AppCompatActivity() {
     }
 
     private fun loadSmsContacts() {
-        lifecycleScope.launch {
-            try {
-                val currentUser = SupabaseClient.client.auth.currentUserOrNull() ?: return@launch
-                val contacts = SupabaseClient.client.from("sms_contacts")
-                    .select { filter { eq("user_id", currentUser.id) } }
-                    .decodeList<SmsContact>()
-
-                contactList.clear()
-                contactList.addAll(contacts)
-                smsAdapter.notifyDataSetChanged()
-            } catch (e: Exception) {
-                android.util.Log.e("SmsContact", "Load error: ${e.message}")
-            }
-        }
+        contactList.clear()
+        contactList.addAll(SmsHelper.getFromLocalStorage(this))
+        smsAdapter.notifyDataSetChanged()
     }
 
     private fun saveSmsContact(name: String, phone: String) {
-        lifecycleScope.launch {
-            try {
-                val currentUser = SupabaseClient.client.auth.currentUserOrNull() ?: return@launch
-                val contact = SmsContact(user_id = currentUser.id, name = name, phone = phone)
-                
-                SupabaseClient.client.from("sms_contacts").insert(contact)
-                
-                binding.etSmsName.text?.clear()
-                binding.etSmsPhone.text?.clear()
-                loadSmsContacts()
-                Toast.makeText(this@AddSmsContactActivity, "Contact Added", Toast.LENGTH_SHORT).show()
-            } catch (e: Exception) {
-                Toast.makeText(this@AddSmsContactActivity, "Failed to save", Toast.LENGTH_SHORT).show()
-            }
-        }
+        val userId = SessionManager.getUserId() ?: "local_user"
+        val contact = SmsContact(
+            id = UUID.randomUUID().toString(),
+            user_id = userId,
+            name = name,
+            phone = phone
+        )
+        contactList.add(contact)
+        SmsHelper.saveToLocalStorage(this, contactList)
+        smsAdapter.notifyDataSetChanged()
+        
+        binding.etSmsName.text?.clear()
+        binding.etSmsPhone.text?.clear()
+        Toast.makeText(this, "Contact Added", Toast.LENGTH_SHORT).show()
     }
 
     private fun deleteSmsContact(contact: SmsContact) {
-        lifecycleScope.launch {
-            try {
-                SupabaseClient.client.from("sms_contacts").delete {
-                    filter { eq("id", contact.id ?: "") }
-                }
-                loadSmsContacts()
-            } catch (e: Exception) { }
-        }
+        contactList.removeAll { it.id == contact.id || (it.phone == contact.phone && it.name == contact.name) }
+        SmsHelper.saveToLocalStorage(this, contactList)
+        smsAdapter.notifyDataSetChanged()
+        Toast.makeText(this, "Contact Deleted", Toast.LENGTH_SHORT).show()
     }
 
     private fun setupBottomNavigation() {
@@ -139,9 +122,6 @@ class AddSmsContactActivity : AppCompatActivity() {
         class ViewHolder(view: View) : RecyclerView.ViewHolder(view) {
             val name: TextView = view.findViewById(android.R.id.text1)
             val phone: TextView = view.findViewById(android.R.id.text2)
-            val deleteBtn: android.widget.ImageView = android.widget.ImageView(view.context).apply {
-                setImageResource(android.R.drawable.ic_menu_delete)
-            }
         }
         override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): ViewHolder {
             val view = LayoutInflater.from(parent.context).inflate(android.R.layout.simple_list_item_2, parent, false)

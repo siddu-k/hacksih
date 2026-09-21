@@ -29,6 +29,9 @@ import kotlinx.coroutines.withTimeoutOrNull
 import java.io.ByteArrayOutputStream
 import java.io.File
 import java.io.FileOutputStream
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
 import kotlin.coroutines.resume
 
 object CameraManager {
@@ -199,8 +202,8 @@ object CameraManager {
                 
                 if (capture.bitmap != null) {
                     Log.d(TAG, "[$cameraName] ✅ Bitmap captured: ${capture.bitmap.width}x${capture.bitmap.height}")
-                    Log.d(TAG, "[$cameraName] Step 5: Saving to file...")
-                    saveBitmapToFile(capture.bitmap, imageFile)
+                    Log.d(TAG, "[$cameraName] Step 5: Saving to file and local evidence...")
+                    saveBitmapToFile(capture.bitmap, imageFile, context, lensFacing)
                     Log.d(TAG, "[$cameraName] ✅ SUCCESS - Photo saved: ${imageFile.length()} bytes")
                     
                     // CRITICAL: Wait for camera to actually close before returning
@@ -485,24 +488,48 @@ object CameraManager {
     }
     
     /**
-     * Create temporary image file
+     * Returns the persistent local evidence folder where emergency photos are stored.
+     */
+    fun getLocalEvidenceDirectory(context: Context): File {
+        val dir = context.getExternalFilesDir("emergency_evidence") ?: File(context.filesDir, "emergency_evidence")
+        if (!dir.exists()) dir.mkdirs()
+        return dir
+    }
+
+    /**
+     * Create temporary image file and persistent local evidence copy
      */
     private fun createImageFile(context: Context, lensFacing: Int): File {
-        val timestamp = System.currentTimeMillis()
+        val timestamp = SimpleDateFormat("yyyyMMdd_HHmmss", Locale.getDefault()).format(Date())
         val prefix = if (lensFacing == CameraCharacteristics.LENS_FACING_FRONT) "front" else "back"
         return File(context.cacheDir, "emergency_${prefix}_${timestamp}.jpg")
     }
     
     /**
-     * Save bitmap to file
+     * Save bitmap to file and duplicate to persistent local evidence folder
      */
-    private fun saveBitmapToFile(bitmap: Bitmap, file: File) {
+    private fun saveBitmapToFile(bitmap: Bitmap, file: File, context: Context, lensFacing: Int) {
         try {
             FileOutputStream(file).use { out ->
                 bitmap.compress(Bitmap.CompressFormat.JPEG, 85, out)
                 out.flush()
             }
-            Log.d(TAG, "✅ Saved image: ${file.absolutePath}, size: ${file.length()} bytes")
+            Log.d(TAG, "✅ Saved image to cache: ${file.absolutePath}, size: ${file.length()} bytes")
+
+            // Store permanent copy locally for user/legal proof
+            try {
+                val timestamp = SimpleDateFormat("yyyyMMdd_HHmmss", Locale.getDefault()).format(Date())
+                val prefix = if (lensFacing == CameraCharacteristics.LENS_FACING_FRONT) "front" else "back"
+                val evidenceDir = getLocalEvidenceDirectory(context)
+                val evidenceFile = File(evidenceDir, "evidence_${prefix}_${timestamp}.jpg")
+                FileOutputStream(evidenceFile).use { out ->
+                    bitmap.compress(Bitmap.CompressFormat.JPEG, 90, out)
+                    out.flush()
+                }
+                Log.d(TAG, "📁 Saved local evidence photo: ${evidenceFile.absolutePath}")
+            } catch (e: Exception) {
+                Log.w(TAG, "Could not save secondary evidence copy: ${e.message}")
+            }
         } catch (e: Exception) {
             Log.e(TAG, "❌ Failed to save image: ${e.message}", e)
             throw e
