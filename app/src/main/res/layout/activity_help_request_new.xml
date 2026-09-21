@@ -41,7 +41,7 @@
                     <TextView
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:text="🚨 EMERGENCY ALERT"
+                        android:text="EMERGENCY ALERT"
                         android:textColor="@color/text_primary"
                         android:textSize="24sp"
                         android:textStyle="bold"
@@ -315,7 +315,7 @@
                         android:id="@+id/photosHeader"
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:text="📸 Emergency Photos"
+                        android:text="Emergency Photos"
                         android:textColor="@color/text_primary"
                         android:textSize="18sp"
                         android:textStyle="bold"

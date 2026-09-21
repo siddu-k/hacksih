@@ -15,7 +15,7 @@ object SOSHelper {
     
     fun showSOSConfirmation(activity: Activity) {
         AlertDialog.Builder(activity)
-            .setTitle("🚨 Emergency SOS Alert")
+            .setTitle("Emergency SOS Alert")
             .setMessage("Are you sure you want to send an emergency alert to all your guardians?\n\nThis will:\n• Send your location\n• Capture photos\n• Notify all guardians immediately")
             .setPositiveButton("Send Alert") { dialog, _ ->
                 dialog.dismiss()
@@ -50,9 +50,9 @@ object SOSHelper {
                 val locationManager = activity.getSystemService(android.content.Context.LOCATION_SERVICE) as android.location.LocationManager
                 
                 if (ActivityCompat.checkSelfPermission(
-                        activity,
-                        Manifest.permission.ACCESS_FINE_LOCATION
-                    ) != PackageManager.PERMISSION_GRANTED
+                    activity,
+                    Manifest.permission.ACCESS_FINE_LOCATION
+                ) != PackageManager.PERMISSION_GRANTED
                 ) {
                     Toast.makeText(activity, "Location permission required", Toast.LENGTH_SHORT).show()
                     return@launch
@@ -69,7 +69,7 @@ object SOSHelper {
                 android.util.Log.d("SOSHelper", "Manual SOS: lat=$latitude, lon=$longitude, accuracy=$accuracy")
                 
                 // Show progress
-                Toast.makeText(activity, "📸 Capturing photos and sending alert...", Toast.LENGTH_SHORT).show()
+                Toast.makeText(activity, "Capturing photos and sending alert...", Toast.LENGTH_SHORT).show()
                 val photos = CameraManager.captureEmergencyPhotos(activity)
                 
                 // Send emergency alert using AlertManager
@@ -85,7 +85,7 @@ object SOSHelper {
                 if (result.isSuccess) {
                     Toast.makeText(
                         activity,
-                        "✅ Emergency alert sent to all guardians!",
+                        "Emergency alert sent to all guardians!",
                         Toast.LENGTH_LONG
                     ).show()
                     val triggerIntent = Intent("com.sriox.vasateysec.ALERT_TRIGGERED")
@@ -94,7 +94,7 @@ object SOSHelper {
                 } else {
                     Toast.makeText(
                         activity,
-                        "❌ Failed to send alert: ${result.exceptionOrNull()?.message}",
+                        "Failed to send alert: ${result.exceptionOrNull()?.message}",
                         Toast.LENGTH_LONG
                     ).show()
                 }
@@ -102,7 +102,7 @@ object SOSHelper {
                 android.util.Log.e("SOSHelper", "Manual SOS failed", e)
                 Toast.makeText(
                     activity,
-                    "❌ Error: ${e.message}",
+                    "Error: ${e.message}",
                     Toast.LENGTH_LONG
                 ).show()
             }
