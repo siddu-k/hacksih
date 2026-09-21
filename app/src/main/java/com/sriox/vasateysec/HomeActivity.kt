@@ -460,7 +460,7 @@ class HomeActivity : AppCompatActivity(), NavigationView.OnNavigationItemSelecte
     }
 
     private fun updateSignalMeterUi(info: NetworkMonitor.SignalInfo) {
-        binding.tvSignalMeter.text = "📶 ${info.label}"
+        binding.tvSignalMeter.text = info.label
         val color = when {
             !info.isOnline || info.level == 0 -> Color.parseColor("#FF5252") // Red
             info.level == 1 -> Color.parseColor("#FF9800") // Orange
@@ -474,10 +474,10 @@ class HomeActivity : AppCompatActivity(), NavigationView.OnNavigationItemSelecte
         val queueCount = AlertQueueManager.getQueueCount(this)
         if (queueCount > 0) {
             binding.layoutQueueNotice.visibility = View.VISIBLE
-            binding.tvQueueNoticeText.text = "⚠️ $queueCount Alert(s) Queued - Retrying on Signal"
+            binding.tvQueueNoticeText.text = "$queueCount Alert(s) Queued - Retrying on Signal"
         } else if (!info.isOnline || info.level == 0) {
             binding.layoutQueueNotice.visibility = View.VISIBLE
-            binding.tvQueueNoticeText.text = "⚠️ Offline / Low Signal: Alerts will queue locally"
+            binding.tvQueueNoticeText.text = "Offline / Low Signal: Alerts will queue locally"
         } else {
             binding.layoutQueueNotice.visibility = View.GONE
         }
@@ -489,14 +489,14 @@ class HomeActivity : AppCompatActivity(), NavigationView.OnNavigationItemSelecte
             binding.tvQueueBadge.visibility = View.VISIBLE
             binding.tvQueueBadge.text = if (count > 9) "9+" else count.toString()
             binding.layoutQueueNotice.visibility = View.VISIBLE
-            binding.tvQueueNoticeText.text = "⚠️ $count Alert(s) Queued - Retrying on Signal"
+            binding.tvQueueNoticeText.text = "$count Alert(s) Queued - Retrying on Signal"
         } else {
             binding.tvQueueBadge.visibility = View.GONE
             val currentLevel = NetworkMonitor.getCurrentSignalLevel(this)
             val isOnline = NetworkMonitor.isCellularOrNetworkAvailable(this)
             if (!isOnline || currentLevel == 0) {
                 binding.layoutQueueNotice.visibility = View.VISIBLE
-                binding.tvQueueNoticeText.text = "⚠️ Offline / Low Signal: Alerts will queue locally"
+                binding.tvQueueNoticeText.text = "Offline / Low Signal: Alerts will queue locally"
             } else {
                 binding.layoutQueueNotice.visibility = View.GONE
             }
@@ -519,17 +519,17 @@ class HomeActivity : AppCompatActivity(), NavigationView.OnNavigationItemSelecte
                 String.format("%.4f, %.4f", it.latitude, it.longitude)
             } else "GPS pending"
             val summary = if (!it.situationSummary.isNullOrBlank()) "\n   Summary: ${it.situationSummary.take(50)}" else ""
-            "${idx + 1}. [${it.timestamp}]\n   📍 $loc$summary\n   Status: Pending Cellular Signal"
+            "${idx + 1}. [${it.timestamp}]\n   Location: $loc$summary\n   Status: Pending Cellular Signal"
         }.toTypedArray()
 
         AlertDialog.Builder(this)
             .setTitle("Pending Offline Alerts (${alerts.size})")
             .setItems(items, null)
-            .setPositiveButton("🚀 Send Now (Flush)") { _, _ ->
+            .setPositiveButton("Send Now (Flush)") { _, _ ->
                 Toast.makeText(this, "Flushing alert queue now...", Toast.LENGTH_SHORT).show()
                 AlertQueueManager.flushQueue(this)
             }
-            .setNegativeButton("🗑️ Clear Queue") { _, _ ->
+            .setNegativeButton("Clear Queue") { _, _ ->
                 lifecycleScope.launch {
                     AlertQueueManager.clearQueue(this@HomeActivity)
                     updateQueueBadgeUi()

@@ -27,13 +27,13 @@
             android:gravity="center_vertical">
 
             <!-- Status Icon -->
-            <TextView
+            <ImageView
                 android:id="@+id/statusIcon"
                 android:layout_width="40dp"
                 android:layout_height="40dp"
-                android:gravity="center"
-                android:text="⚠️"
-                android:textSize="24sp"
+                android:padding="8dp"
+                android:src="@android:drawable/stat_notify_error"
+                android:tint="@color/golden"
                 android:background="@drawable/gradient_header_golden"
                 android:backgroundTint="@color/card_elevated" />
 

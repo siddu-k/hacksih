@@ -63,7 +63,7 @@
                         android:id="@+id/alertType"
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:text="📤 Sent"
+                        android:text="Sent"
                         android:textSize="12sp"
                         android:textColor="@color/text_primary"
                         android:background="@color/blue"
@@ -142,7 +142,7 @@
                     android:layout_width="0dp"
                     android:layout_height="wrap_content"
                     android:layout_weight="1"
-                    android:text="📍 Lat: 0.0, Long: 0.0"
+                    android:text="Lat: 0.0, Long: 0.0"
                     android:textColor="@color/text_secondary"
                     android:textSize="14sp"
                     android:layout_marginStart="12dp" />

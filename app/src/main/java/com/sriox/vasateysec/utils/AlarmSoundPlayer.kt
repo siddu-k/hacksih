@@ -275,7 +275,7 @@ object AlarmSoundPlayer {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             val channel = NotificationChannel(
                 CHANNEL_ID,
-                "🚨 Critical Emergency Siren",
+                "Critical Emergency Siren",
                 NotificationManager.IMPORTANCE_HIGH
             ).apply {
                 description = "High-Priority Emergency Siren Alerts"
@@ -324,7 +324,7 @@ object AlarmSoundPlayer {
 
         val notification = NotificationCompat.Builder(context, CHANNEL_ID)
             .setSmallIcon(R.mipmap.ic_launcher)
-            .setContentTitle("🚨 $title")
+            .setContentTitle(title)
             .setContentText(message)
             .setStyle(NotificationCompat.BigTextStyle().bigText(message))
             .setPriority(NotificationCompat.PRIORITY_MAX)

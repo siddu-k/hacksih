@@ -198,7 +198,7 @@ object SmsHelper {
             if (cleanSummary.isNullOrBlank()) "$tag SOS UPDATE from $userName\nTime: $timeStr\n$locationUrl"
             else "$tag SOS UPDATE from $userName\nTime: $timeStr\nSummary: $cleanSummary\n$locationUrl"
         } else {
-            val header = "$tag 🚨 SOS ALERT! $userName needs help!\nTime: $timeStr$batteryInfo$phoneInfo\nLocation: $locationUrl"
+            val header = "$tag SOS ALERT! $userName needs help!\nTime: $timeStr$batteryInfo$phoneInfo\nLocation: $locationUrl"
             if (cleanSummary.isNullOrBlank()) header
             else "$header\nSummary: $cleanSummary"
         }
@@ -259,7 +259,7 @@ object SmsHelper {
             val userName = SessionManager.getUserName() ?: "User"
             val timeStr = SimpleDateFormat("dd MMM, hh:mm a", Locale.getDefault()).format(Date())
             val tag = EmergencySmsReceiver.SMS_EMERGENCY_TAG
-            val message = "$tag ✅ CANCEL ALERT: $userName is SAFE.\nSituation resolved / False alarm.\nTime: $timeStr"
+            val message = "$tag CANCEL ALERT: $userName is SAFE.\nSituation resolved / False alarm.\nTime: $timeStr"
 
             val smsManager = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
                 context.getSystemService(SmsManager::class.java)

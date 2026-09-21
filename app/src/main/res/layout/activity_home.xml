@@ -60,7 +60,7 @@
                             android:id="@+id/tvSignalMeter"
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
-                            android:text="📶 Signal: Initializing..."
+                            android:text="Signal: Initializing..."
                             android:textColor="@color/text_primary"
                             android:textSize="12sp"
                             android:textStyle="bold"
@@ -256,7 +256,7 @@
                                 android:layout_width="0dp"
                                 android:layout_height="wrap_content"
                                 android:layout_weight="1"
-                                android:text="🚨 SOS Alert Sent!"
+                                android:text="SOS Alert Sent!"
                                 android:textColor="#FF6B6B"
                                 android:textSize="16sp"
                                 android:textStyle="bold" />

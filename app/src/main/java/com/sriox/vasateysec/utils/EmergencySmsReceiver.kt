@@ -95,7 +95,7 @@ class EmergencySmsReceiver : BroadcastReceiver() {
                         val channelId = "emergency_alarm_siren_channel_v3"
                         val ackNotif = androidx.core.app.NotificationCompat.Builder(context, channelId)
                             .setSmallIcon(com.sriox.vasateysec.R.mipmap.ic_launcher)
-                            .setContentTitle("🛡️ Guardian Confirmed Alert")
+                            .setContentTitle("Guardian Confirmed Alert")
                             .setContentText("Help is on the way! Alert acknowledged by Guardian.")
                             .setPriority(androidx.core.app.NotificationCompat.PRIORITY_HIGH)
                             .setAutoCancel(true)

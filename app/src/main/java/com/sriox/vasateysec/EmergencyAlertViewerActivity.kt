@@ -78,11 +78,11 @@ class EmergencyAlertViewerActivity : AppCompatActivity(), OnMapReadyCallback {
             situationSummary?.contains("is SAFE", ignoreCase = true) == true
 
         if (isCancelled) {
-            binding.headerTitle.text = "✅ USER IS SAFE - CANCELLED"
+            binding.headerTitle.text = "USER IS SAFE - CANCELLED"
             binding.headerTitle.setTextColor(android.graphics.Color.parseColor("#4CAF50"))
             AlarmSoundPlayer.stopAlarm(this)
         } else if (isSmsAlert) {
-            binding.headerTitle.text = "🚨 EMERGENCY SMS ALERT"
+            binding.headerTitle.text = "EMERGENCY SMS ALERT"
         }
 
         binding.userName.text = fullName
@@ -113,7 +113,7 @@ class EmergencyAlertViewerActivity : AppCompatActivity(), OnMapReadyCallback {
                 val targetPhone = phoneNumber?.trim()
                 if (!targetPhone.isNullOrBlank()) {
                     sendGuardianConfirmationSms(targetPhone)
-                    binding.confirmAlertButton.text = "✅ CONFIRMED (SMS SENT TO USER)"
+                    binding.confirmAlertButton.text = "CONFIRMED (SMS SENT TO USER)"
                     binding.confirmAlertButton.isEnabled = false
                     android.widget.Toast.makeText(this, "Confirmation sent to user via SMS", android.widget.Toast.LENGTH_SHORT).show()
                 } else {
@@ -136,7 +136,7 @@ class EmergencyAlertViewerActivity : AppCompatActivity(), OnMapReadyCallback {
             val guardianName = SessionManager.getUserName() ?: "Guardian"
             val timeStr = SimpleDateFormat("dd MMM, hh:mm a", Locale.getDefault()).format(Date())
             val tag = EmergencySmsReceiver.SMS_EMERGENCY_TAG
-            val message = "$tag ✅ GUARDIAN ACKNOWLEDGED: Help is on the way! $guardianName received your alert.\nTime: $timeStr"
+            val message = "$tag GUARDIAN ACKNOWLEDGED: Help is on the way! $guardianName received your alert.\nTime: $timeStr"
             
             val smsManager = if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.S) {
                 getSystemService(android.telephony.SmsManager::class.java)
