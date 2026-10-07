@@ -25,23 +25,37 @@ class EmergencySmsReceiver : BroadcastReceiver() {
     override fun onReceive(context: Context, intent: Intent?) {
         if (intent?.action == Telephony.Sms.Intents.SMS_RECEIVED_ACTION) {
             val messages = Telephony.Sms.Intents.getMessagesFromIntent(intent)
-            for (sms in messages) {
-                val body = sms.messageBody ?: continue
-                val sender = sms.originatingAddress ?: "Unknown Guardian"
+            if (messages.isEmpty()) return
+            // Multipart SMS arrives as several PDUs: join ALL parts first.
+            // Old code parsed each part alone, so part 1 had the tag but no
+            // coordinates and part 2 had the map link but no tag → empty lat/lon.
+            val sender = messages.firstOrNull()?.originatingAddress ?: "Unknown Guardian"
+            val fullBody = messages.mapNotNull { it.messageBody }.joinToString("")
+            if (fullBody.isBlank()) return
+            handleEmergencyBody(context, fullBody, sender, messages.firstOrNull()?.timestampMillis ?: System.currentTimeMillis())
+        }
+    }
 
-                Log.d(TAG, "SMS Received from $sender: ${body.take(40)}...")
+    private fun handleEmergencyBody(context: Context, body: String, sender: String, smsTimeMillis: Long) {
+        Log.d(TAG, "SMS Received from $sender: ${body.take(80)}...")
 
-                // Check if this is an official SahAi emergency SMS
-                if (body.contains(SMS_EMERGENCY_TAG, ignoreCase = true) || body.contains("SahAi SOS", ignoreCase = true)) {
-                    Log.d(TAG, "🚨 MATCHED EMERGENCY SMS! Parsing coordinates and details...")
-                    
-                    val cleanBody = body.replace(SMS_EMERGENCY_TAG, "").trim()
+        // Check if this is an official SahAi emergency SMS
+        if (body.contains(SMS_EMERGENCY_TAG, ignoreCase = true) || body.contains("SahAi SOS", ignoreCase = true)) {
+            Log.d(TAG, "🚨 MATCHED EMERGENCY SMS! Parsing coordinates and details...")
 
-                    // 1. Extract GPS coordinates
-                    val latLonRegex = Regex("""(?:[?&]q=|loc:|\?q=)([0-9.-]+),([0-9.-]+)""")
-                    val match = latLonRegex.find(cleanBody)
-                    val latitude = match?.groupValues?.get(1) ?: ""
-                    val longitude = match?.groupValues?.get(2) ?: ""
+            val cleanBody = body.replace(SMS_EMERGENCY_TAG, "").trim()
+
+            // 1. Extract GPS coordinates — tolerant to multipart splits / carrier rewrites.
+            // New sender format puts "LOC:lat,lon" first; old format has maps.google.com/?q=lat,lon.
+            val latitude: String
+            val longitude: String
+            val locToken = Regex("""LOC:\s*(-?\d+(?:\.\d+)?)\s*,\s*(-?\d+(?:\.\d+)?)""", RegexOption.IGNORE_CASE).find(cleanBody)
+            val mapLink = Regex("""[?&]q=\s*(-?\d+(?:\.\d+)?)\s*,\s*(-?\d+(?:\.\d+)?)""", RegexOption.IGNORE_CASE).find(cleanBody)
+            val barePair = Regex("""(-?\d+\.\d+)\s*,\s*(-?\d+\.\d+)""").find(cleanBody)
+            val coordMatch = locToken ?: mapLink ?: barePair
+            latitude = coordMatch?.groupValues?.get(1) ?: ""
+            longitude = coordMatch?.groupValues?.get(2) ?: ""
+            if (latitude.isBlank()) Log.w(TAG, "No coordinates found in SMS body")
 
                     // 2. Extract User Name
                     val nameRegex = Regex("""(?:ALERT!\s*(.*?)\s*needs help|UPDATE\s*(.*?):)""", RegexOption.IGNORE_CASE)
@@ -60,11 +74,21 @@ class EmergencySmsReceiver : BroadcastReceiver() {
                     // 4. Extract Timestamp and Sender Phone
                     val timeRegex = Regex("""Time:\s*([^\n|]+)""", RegexOption.IGNORE_CASE)
                     val timeMatch = timeRegex.find(cleanBody)?.groupValues?.get(1)?.trim()
-                    val formattedTime = timeMatch ?: SimpleDateFormat("MMM dd, hh:mm a", Locale.getDefault()).format(Date(sms.timestampMillis))
+                    val formattedTime = timeMatch ?: SimpleDateFormat("MMM dd, hh:mm a", Locale.getDefault()).format(Date(smsTimeMillis))
 
                     val phoneRegex = Regex("""Ph:\s*([^\n|]+)""", RegexOption.IGNORE_CASE)
                     val phoneMatch = phoneRegex.find(cleanBody)?.groupValues?.get(1)?.trim()
                     val userPhone = phoneMatch ?: sender
+
+                    // 5. Extract Supabase photo links (PIC1:/PIC2: + any bare image URL)
+                    val picTagged = Regex("""PIC\d?:\s*(https?://\S+)""", RegexOption.IGNORE_CASE)
+                        .findAll(cleanBody).map { it.groupValues[1].trimEnd('.', ',', ')') }.toList()
+                    val picBare = Regex("""https?://\S*emergency-photos\S*""", RegexOption.IGNORE_CASE)
+                        .findAll(cleanBody).map { it.value.trimEnd('.', ',', ')') }.toList()
+                    val photoUrls = (picTagged + picBare).distinct()
+                    val frontPhotoUrl = photoUrls.getOrNull(0) ?: ""
+                    val backPhotoUrl = photoUrls.getOrNull(1) ?: ""
+                    if (photoUrls.isNotEmpty()) Log.d(TAG, "Found ${photoUrls.size} photo link(s) in SMS")
 
                     // Check if this is a CANCEL ALERT SMS
                     if (cleanBody.contains("CANCEL ALERT", ignoreCase = true) || cleanBody.contains("is SAFE", ignoreCase = true)) {
@@ -112,6 +136,8 @@ class EmergencySmsReceiver : BroadcastReceiver() {
                         "situationSummary" to situationSummary,
                         "email" to situationSummary,
                         "timestamp" to formattedTime,
+                        "frontPhotoUrl" to frontPhotoUrl,
+                        "backPhotoUrl" to backPhotoUrl,
                         "isSmsAlert" to "true"
                     )
 
@@ -131,8 +157,8 @@ class EmergencySmsReceiver : BroadcastReceiver() {
                             alert_type = "emergency_sms",
                             status = "received",
                             created_at = formattedTime,
-                            front_photo_url = null,
-                            back_photo_url = null
+                            front_photo_url = frontPhotoUrl.ifBlank { null },
+                            back_photo_url = backPhotoUrl.ifBlank { null }
                         )
                         AlertManager.saveAlertToLocal(context, history)
                     } catch (e: Exception) {
@@ -146,8 +172,6 @@ class EmergencySmsReceiver : BroadcastReceiver() {
                         situationSummary,
                         alertData
                     )
-                }
-            }
         }
     }
 }

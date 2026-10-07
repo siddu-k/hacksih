@@ -62,6 +62,10 @@ class AddSmsContactActivity : AppCompatActivity() {
     }
 
     private fun saveSmsContact(name: String, phone: String) {
+        if (!SmsHelper.isValidPhone(phone)) {
+            Toast.makeText(this, "Enter a valid phone number (min 7 digits)", Toast.LENGTH_SHORT).show()
+            return
+        }
         val userId = SessionManager.getUserId() ?: "local_user"
         val contact = SmsContact(
             id = UUID.randomUUID().toString(),

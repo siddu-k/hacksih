@@ -157,12 +157,18 @@ class EmergencyAlertViewerActivity : AppCompatActivity(), OnMapReadyCallback {
     }
 
     private fun navigateTo() {
-        latitude?.let { lat ->
-            longitude?.let { lon ->
-                val uri = Uri.parse("google.navigation:q=$lat,$lon")
-                val intent = Intent(Intent.ACTION_VIEW, uri).apply { setPackage("com.google.android.apps.maps") }
+        val lat = latitude
+        val lon = longitude
+        if (lat != null && lon != null) {
+            val uri = Uri.parse("google.navigation:q=$lat,$lon")
+            val intent = Intent(Intent.ACTION_VIEW, uri).apply { setPackage("com.google.android.apps.maps") }
+            try {
                 startActivity(intent)
+            } catch (_: Exception) {
+                startActivity(Intent(Intent.ACTION_VIEW, Uri.parse("https://maps.google.com/?q=$lat,$lon")))
             }
+        } else {
+            android.widget.Toast.makeText(this, "No location in this SMS — ask sender to share live location", android.widget.Toast.LENGTH_LONG).show()
         }
     }
 
@@ -214,12 +220,17 @@ class EmergencyAlertViewerActivity : AppCompatActivity(), OnMapReadyCallback {
     override fun onMapReady(map: GoogleMap) {
         googleMap = map
         googleMap?.mapType = GoogleMap.MAP_TYPE_SATELLITE
-        latitude?.let { lat ->
-            longitude?.let { lon ->
-                val pos = LatLng(lat, lon)
-                googleMap?.addMarker(MarkerOptions().position(pos).title("Emergency Location"))
-                googleMap?.moveCamera(CameraUpdateFactory.newLatLngZoom(pos, 15f))
-            }
+        val lat = latitude
+        val lon = longitude
+        if (lat != null && lon != null) {
+            val pos = LatLng(lat, lon)
+            googleMap?.addMarker(MarkerOptions().position(pos).title("Emergency Location"))
+            googleMap?.moveCamera(CameraUpdateFactory.newLatLngZoom(pos, 15f))
+        } else {
+            // No coordinates parsed: park over India and tell the guardian why.
+            val fallback = LatLng(20.59, 78.96)
+            googleMap?.moveCamera(CameraUpdateFactory.newLatLngZoom(fallback, 4f))
+            android.widget.Toast.makeText(this, "Location missing in SMS — tap Navigate for details", android.widget.Toast.LENGTH_LONG).show()
         }
     }
 

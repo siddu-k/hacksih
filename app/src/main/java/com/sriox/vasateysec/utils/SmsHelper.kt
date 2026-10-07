@@ -26,6 +26,24 @@ object SmsHelper {
     private const val STORAGE_KEY = "permanent_sms_contacts"
     private const val ACTION_SMS_SENT = "com.sriox.vasateysec.SMS_SENT"
     private const val KEY_LAST_SENT_TIME = "last_sms_sent_timestamp"
+
+    /** Result of an SMS dispatch — lets callers show the real outcome instead of "sent". */
+    sealed interface SmsResult {
+        data class Sent(val sentCount: Int, val total: Int) : SmsResult
+        data class Failed(val reason: String) : SmsResult
+    }
+
+    /** A phone is usable only if it has at least 7 digits (rejects emails / junk). */
+    fun isValidPhone(phone: String): Boolean {
+        val digits = phone.filter { it.isDigit() }
+        return digits.length >= 7
+    }
+
+    fun normalizePhone(phone: String): String {
+        var p = phone.trim().replace(Regex("[\\s\\-()]+"), "")
+        if (p.length == 10 && !p.startsWith("+")) p = "+91$p"
+        return p
+    }
     
     /**
      * Gets the remaining time in milliseconds until the next SMS can be sent for hardware triggers.
@@ -58,13 +76,35 @@ object SmsHelper {
         longitude: Double?, 
         isHardware: Boolean = false,
         situationSummary: String? = null,
-        isQueuedRetry: Boolean = false
-    ) {
+        isQueuedRetry: Boolean = false,
+        photoLinks: String? = null
+    ): SmsResult {
         val alertPrefs = context.getSharedPreferences("alert_settings", Context.MODE_PRIVATE)
         val settingsPrefs = context.getSharedPreferences("vasatey_settings", Context.MODE_PRIVATE)
         
         // SMS: Always ON for hardware triggers; defaults to true for safety
         val smsEnabled = if (isHardware) true else alertPrefs.getBoolean("sms_alert_enabled", true)
+        if (!smsEnabled) {
+            Log.w(TAG, "❌ ABORT: SMS alerts are switched OFF in settings.")
+            return SmsResult.Failed("SMS alerts are switched OFF. Enable SMS Alert in Home.")
+        }
+
+        // Fail fast with a clear reason instead of silently doing nothing.
+        if (ContextCompat.checkSelfPermission(context, Manifest.permission.SEND_SMS) != PackageManager.PERMISSION_GRANTED) {
+            Log.e(TAG, "❌ ABORT: SEND_SMS permission not granted.")
+            return SmsResult.Failed("SMS permission not granted. Allow SMS permission and retry.")
+        }
+
+        val contacts = getFromLocalStorage(context)
+        if (contacts.isEmpty()) {
+            Log.e(TAG, "❌ ABORT: No contacts found in local storage.")
+            return SmsResult.Failed("No emergency contacts. Add a guardian contact first.")
+        }
+        val validContacts = contacts.filter { isValidPhone(it.phone) }
+        if (validContacts.isEmpty()) {
+            Log.e(TAG, "❌ ABORT: contacts exist but none has a valid phone number.")
+            return SmsResult.Failed("No valid phone numbers. Fix guardian contact numbers.")
+        }
         
         // Auto-Call: Now strictly respects the "Hardware Auto Call" toggle for ESP32.
         val autoCallEnabled = if (isHardware) {
@@ -87,14 +127,14 @@ object SmsHelper {
         if (!isQueuedRetry && lastSentTime > 0 && timeDiff < minCooldownMs) {
             val remainingSec = ((minCooldownMs - timeDiff) / 1000) + 1
             Log.w(TAG, "🚫 Universal 5s Cooldown Active: please wait ${remainingSec}s before sending another SMS alert.")
-            return
+            return SmsResult.Failed("Alert already sent. Please wait ${remainingSec}s.")
         }
 
         // Apply persistent cooldown for hardware (e.g. 2 min)
         if (!isQueuedRetry && isHardware && lastSentTime > 0 && timeDiff < smsCooldownMs) {
             val remaining = (smsCooldownMs - timeDiff) / 1000
             Log.d(TAG, "🚫 Persistent Cooldown Active: $remaining seconds left.")
-            return
+            return SmsResult.Failed("Hardware cooldown: next alert in ${remaining}s.")
         }
 
         // Offline / Low Network Check: If no cellular signal or network is unavailable, enqueue for auto-dispatch
@@ -110,26 +150,32 @@ object SmsHelper {
             )
         }
 
-        withContext(Dispatchers.IO) {
+        return withContext(Dispatchers.IO) {
             try {
-                val contacts = getFromLocalStorage(context)
-                if (contacts.isEmpty()) {
-                    Log.e(TAG, "❌ ABORT: No contacts found in local storage.")
-                    return@withContext
-                }
-
-                // 1. SMS Sequence (phase-1, immediate — summary added if already ready)
-                if (smsEnabled) {
-                    sendSmsSequence(context, contacts, latitude, longitude, situationSummary)
-                    // PERSIST the sent time immediately
+                // 1. SMS Sequence — only mark timestamp on real delivery to SmsManager.
+                val sentCount = sendSmsSequence(context, validContacts, latitude, longitude, situationSummary, photoLinks = photoLinks)
+                if (sentCount > 0) {
+                    // PERSIST the sent time only on actual success so failures don't block retries
                     settingsPrefs.edit().putLong(KEY_LAST_SENT_TIME, System.currentTimeMillis()).apply()
-                    Log.d(TAG, "✅ SMS Sent and Timestamp Persisted")
+                    Log.d(TAG, "✅ SMS dispatched to $sentCount/${validContacts.size} contacts. Timestamp persisted.")
+                } else {
+                    Log.e(TAG, "❌ SMS failed for all ${validContacts.size} contacts — timestamp NOT updated.")
+                    if (!isQueuedRetry) {
+                        AlertQueueManager.enqueueAlert(
+                            context = context,
+                            latitude = latitude,
+                            longitude = longitude,
+                            situationSummary = situationSummary,
+                            isHardware = isHardware
+                        )
+                    }
+                    return@withContext SmsResult.Failed("SMS failed to send. Queued for retry.")
                 }
 
                 // 2. Auto-Call Sequence
                 if (autoCallEnabled) {
                     val selectedPhone = alertPrefs.getString("auto_call_recipient", null)
-                    var callTarget = selectedPhone ?: contacts.firstOrNull()?.phone
+                    var callTarget = selectedPhone ?: validContacts.firstOrNull()?.phone
                     
                     if (callTarget != null) {
                         Log.d(TAG, "📞 Triggering Auto-Call to: $callTarget")
@@ -138,9 +184,10 @@ object SmsHelper {
                         }
                     }
                 }
-                
+
+                SmsResult.Sent(sentCount, validContacts.size)
             } catch (e: Exception) {
-                Log.e(TAG, "🆘 Emergency Error: ${e.message}")
+                Log.e(TAG, "🆘 Emergency Error: ${e.message}", e)
                 if (!isQueuedRetry) {
                     AlertQueueManager.enqueueAlert(
                         context = context,
@@ -150,6 +197,7 @@ object SmsHelper {
                         isHardware = isHardware
                     )
                 }
+                SmsResult.Failed("Send error: ${e.message ?: "unknown"}. Queued for retry.")
             }
         }
     }
@@ -178,8 +226,11 @@ object SmsHelper {
         }
     }
 
-    private fun sendSmsSequence(context: Context, contacts: List<SmsContact>, latitude: Double?, longitude: Double?, situationSummary: String? = null, isFollowUp: Boolean = false) {
-        if (ContextCompat.checkSelfPermission(context, Manifest.permission.SEND_SMS) != PackageManager.PERMISSION_GRANTED) return
+    private fun sendSmsSequence(context: Context, contacts: List<SmsContact>, latitude: Double?, longitude: Double?, situationSummary: String? = null, isFollowUp: Boolean = false, photoLinks: String? = null): Int {
+        if (ContextCompat.checkSelfPermission(context, Manifest.permission.SEND_SMS) != PackageManager.PERMISSION_GRANTED) {
+            Log.e(TAG, "sendSmsSequence aborted: SEND_SMS not granted")
+            return 0
+        }
 
         val userName = SessionManager.getUserName() ?: "User"
         val userPhone = SessionManager.getUserPhone()?.takeIf { it.isNotBlank() }
@@ -198,7 +249,14 @@ object SmsHelper {
             if (cleanSummary.isNullOrBlank()) "$tag SOS UPDATE from $userName\nTime: $timeStr\n$locationUrl"
             else "$tag SOS UPDATE from $userName\nTime: $timeStr\nSummary: $cleanSummary\n$locationUrl"
         } else {
-            val header = "$tag SOS ALERT! $userName needs help!\nTime: $timeStr$batteryInfo$phoneInfo\nLocation: $locationUrl"
+            // Keep coordinates at the START so they survive multipart SMS splits:
+            // part 1 always has LOC: + MAP link even if the tail is cut off.
+            // Supabase photo links follow right after (PIC1:/PIC2:) when uploaded.
+            val locToken = if (latitude != null && longitude != null) "LOC:$latitude,$longitude" else "LOC:unknown"
+            val pics = if (photoLinks.isNullOrBlank()) "" else photoLinks.trim()
+            val header = "$tag SOS ALERT! $userName needs help!\n$locToken\nMAP:$locationUrl" +
+                (if (pics.isNotEmpty()) "\n$pics" else "") +
+                "\nTime: $timeStr$batteryInfo$phoneInfo"
             if (cleanSummary.isNullOrBlank()) header
             else "$header\nSummary: $cleanSummary"
         }
@@ -210,9 +268,14 @@ object SmsHelper {
             SmsManager.getDefault()
         }
 
+        var sent = 0
         for (contact in contacts) {
-            var phone = contact.phone.trim()
-            if (phone.length == 10 && !phone.startsWith("+")) phone = "+91$phone"
+            val raw = contact.phone.trim()
+            if (!isValidPhone(raw)) {
+                Log.w(TAG, "Skipping invalid number '${contact.name}': $raw")
+                continue
+            }
+            var phone = normalizePhone(raw)
 
             val sentIntent = Intent(ACTION_SMS_SENT).apply { 
                 putExtra("phone", phone)
@@ -222,6 +285,10 @@ object SmsHelper {
 
             try {
                 val parts = smsManager.divideMessage(message)
+                if (parts == null || parts.isEmpty()) {
+                    Log.e(TAG, "divideMessage returned empty for $phone")
+                    continue
+                }
                 if (parts.size > 1) {
                     val sentIntents = ArrayList<PendingIntent>()
                     for (i in parts.indices) sentIntents.add(pendingIntent)
@@ -229,13 +296,20 @@ object SmsHelper {
                 } else {
                     smsManager.sendTextMessage(phone, null, message, pendingIntent, null)
                 }
-            } catch (e: Exception) { }
+                sent++
+            } catch (e: Exception) {
+                Log.e(TAG, "SMS send failed to $phone: ${e.message}", e)
+            }
         }
+        return sent
     }
 
     private fun triggerAutoCall(context: Context, phoneNumber: String) {
-        var phone = phoneNumber.trim()
-        if (phone.length == 10 && !phone.startsWith("+")) phone = "+91$phone"
+        if (!isValidPhone(phoneNumber)) {
+            Log.w(TAG, "Auto-call skipped: invalid number $phoneNumber")
+            return
+        }
+        var phone = normalizePhone(phoneNumber)
 
         if (ContextCompat.checkSelfPermission(context, Manifest.permission.CALL_PHONE) == PackageManager.PERMISSION_GRANTED) {
             try {
@@ -269,8 +343,9 @@ object SmsHelper {
             }
 
             for (contact in contacts) {
-                var phone = contact.phone.trim()
-                if (phone.length == 10 && !phone.startsWith("+")) phone = "+91$phone"
+                val raw = contact.phone.trim()
+                if (!isValidPhone(raw)) continue
+                val phone = normalizePhone(raw)
                 try {
                     smsManager.sendTextMessage(phone, null, message, null, null)
                 } catch (e: Exception) {

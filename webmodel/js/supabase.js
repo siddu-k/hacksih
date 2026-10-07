@@ -1,6 +1,6 @@
 // Supabase Configuration
-const SUPABASE_URL = 'https://acgsmcxmesvsftzugeik.supabase.co';
-const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImFjZ3NtY3htZXN2c2Z0enVnZWlrIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjIyNzIzNTYsImV4cCI6MjA3Nzg0ODM1Nn0.EwiJajiscMqz1jHyyl-BDS4YIvc0nihBUn3m8pPUP1c';
+const SUPABASE_URL = 'https://pfgvazrkvfaixmfonvmd.supabase.co';
+const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InBmZ3ZhenJrdmZhaXhtZm9udm1kIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTEzOTA2NjAsImV4cCI6MjEwNjk2NjY2MH0.NYejq2f66erlWH3Zg7CdPkI_wkLs4t65exhRwc_4Nuo';
 
 // Initialize Supabase client
 // Using a unique name to avoid conflict with the library itself

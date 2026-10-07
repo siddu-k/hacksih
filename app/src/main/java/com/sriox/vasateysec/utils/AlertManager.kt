@@ -44,6 +44,24 @@ object AlertManager {
 
             val nowStr = SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss", Locale.getDefault()).format(Date())
 
+            // Upload evidence photos to Supabase (best-effort, ~30s cap).
+            // Remote URLs go into the SMS payload so guardians can open them.
+            var frontUrl: String? = null
+            var backUrl: String? = null
+            try {
+                val uploaded = SupabasePhotoUploader.uploadEmergencyPhotos(
+                    frontPhotoFile, backPhotoFile, userId, alertId
+                )
+                frontUrl = uploaded.first
+                backUrl = uploaded.second
+            } catch (e: Exception) {
+                Log.w(TAG, "Photo upload skipped (non-fatal): ${e.message}")
+            }
+            val photoLinks = buildString {
+                if (!frontUrl.isNullOrBlank()) append("\nPIC1:$frontUrl")
+                if (!backUrl.isNullOrBlank()) append("\nPIC2:$backUrl")
+            }.ifBlank { null }
+
             val history = AlertHistory(
                 id = alertId,
                 user_id = userId,
@@ -56,23 +74,27 @@ object AlertManager {
                 alert_type = "voice_help",
                 status = "sent",
                 created_at = nowStr,
-                front_photo_url = frontPhotoFile?.absolutePath,
-                back_photo_url = backPhotoFile?.absolutePath
+                front_photo_url = frontUrl ?: frontPhotoFile?.absolutePath,
+                back_photo_url = backUrl ?: backPhotoFile?.absolutePath
             )
 
             // Save to local device storage
             saveAlertToLocal(context, history)
 
-            // Dispatch emergency SMS immediately
-            SmsHelper.sendEmergencySms(
+            // Dispatch emergency SMS immediately — propagate real outcome.
+            val smsResult = SmsHelper.sendEmergencySms(
                 context = context,
                 latitude = latitude,
                 longitude = longitude,
                 isHardware = false,
-                situationSummary = situationSummary
+                situationSummary = situationSummary,
+                photoLinks = photoLinks
             )
 
-            Result.success(alertId)
+            when (smsResult) {
+                is SmsHelper.SmsResult.Sent -> Result.success(alertId)
+                is SmsHelper.SmsResult.Failed -> Result.failure(Exception(smsResult.reason))
+            }
         } catch (e: Exception) {
             Log.e(TAG, "sendEmergencyAlert error: ${e.message}", e)
             Result.failure(e)

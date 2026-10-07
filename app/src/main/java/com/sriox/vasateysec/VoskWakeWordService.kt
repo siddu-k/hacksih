@@ -16,8 +16,6 @@ import androidx.core.app.NotificationCompat
 import com.sriox.vasateysec.utils.AlertManager
 import com.sriox.vasateysec.utils.CameraManager
 import com.sriox.vasateysec.utils.LocationManager
-import com.sriox.vasateysec.utils.SituationSummarizer
-import com.sriox.vasateysec.utils.SmsHelper
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -105,32 +103,6 @@ class VoskWakeWordService : Service(), RecognitionListener {
             Log.d("VoskService", "Attempting to restart listener...")
             startListening()
         }, 3000)
-    }
-
-    /** Pause wake-word mic so 10s AudioRecord can own the MIC. Safe to call twice. */
-    private fun pauseWakeWordForCapture() {
-        try {
-            // Try soft-pause first (vosk-android has setPause), fall back to stop.
-            try {
-                val m = speechService?.javaClass?.methods?.firstOrNull { it.name == "setPause" }
-                if (m != null) { m.invoke(speechService, true); return }
-            } catch (_: Exception) { }
-            speechService?.stop()
-            isListening = false
-        } catch (_: Exception) { }
-    }
-
-    private fun resumeWakeWordAfterCapture() {
-        try {
-            try {
-                val m = speechService?.javaClass?.methods?.firstOrNull { it.name == "setPause" }
-                if (m != null) { m.invoke(speechService, false); isListening = true; return }
-            } catch (_: Exception) { }
-            startListening()
-        } catch (e: Exception) {
-            Log.w("VoskService", "resume failed: ${e.message}")
-            retryListening()
-        }
     }
 
     // Watchdog to ensure we never stop listening permanently
@@ -235,10 +207,6 @@ class VoskWakeWordService : Service(), RecognitionListener {
     private fun triggerEmergencyAlert() {
         CoroutineScope(Dispatchers.IO).launch {
             try {
-                val alertPrefs = getSharedPreferences("alert_settings", Context.MODE_PRIVATE)
-                val smsEnabled = alertPrefs.getBoolean("sms_alert_enabled", true)
-                val autoCallEnabled = alertPrefs.getBoolean("auto_call_enabled", false)
-                
                 updateNotification("SOS: Processing", "Getting location...")
                 val location = LocationManager.getCurrentLocation(this@VoskWakeWordService)
 
@@ -248,7 +216,6 @@ class VoskWakeWordService : Service(), RecognitionListener {
 
                 // Dispatch offline SMS Alert and/or Auto Call
                 updateNotification("SOS: Sending", "Dispatching emergency alerts...")
-                var createdAlertId: String? = null
                 AlertManager.sendEmergencyAlert(
                     context = this@VoskWakeWordService,
                     latitude = location?.latitude,
@@ -256,7 +223,7 @@ class VoskWakeWordService : Service(), RecognitionListener {
                     locationAccuracy = location?.accuracy,
                     frontPhotoFile = photos.frontPhoto,
                     backPhotoFile = photos.backPhoto,
-                    onAlertCreated = { id -> createdAlertId = id }
+                    onAlertCreated = { _ -> }
                 )
 
                 updateNotification("SOS SENT", "Emergency alerts dispatched successfully.")
@@ -264,40 +231,6 @@ class VoskWakeWordService : Service(), RecognitionListener {
                 val triggerIntent = Intent("com.sriox.vasateysec.ALERT_TRIGGERED")
                 androidx.localbroadcastmanager.content.LocalBroadcastManager.getInstance(this@VoskWakeWordService).sendBroadcast(triggerIntent)
                 sendBroadcast(triggerIntent)
-
-                // PHASE 2: wake-word -> 10s own-STT -> local summarize -> SMS follow-up.
-                // Mic is paused during capture to avoid AudioRecord vs Vosk conflict, then resumed.
-                if (smsEnabled) {
-                    var summaryResult: SituationSummarizer.SituationResult? = null
-                    try {
-                        updateNotification("SOS SENT", "Listening 10s for situation audio...")
-                        pauseWakeWordForCapture()
-                        // Small settle delay so MIC is released before AudioRecord starts
-                        kotlinx.coroutines.delay(400)
-                        summaryResult = SituationSummarizer.captureAndSummarize(
-                            this@VoskWakeWordService,
-                            hasLocation = location != null
-                        )
-                    } catch (e: Exception) {
-                        Log.w("VoskService", "Summary capture failed (non-fatal): ${e.message}")
-                    } finally {
-                        resumeWakeWordAfterCapture()
-                    }
-
-                    if (summaryResult != null) {
-                        try {
-                            val smsBody = SituationSummarizer.toSmsBody(summaryResult)
-                            SmsHelper.sendSummarySms(
-                                this@VoskWakeWordService,
-                                latitude = location?.latitude,
-                                longitude = location?.longitude,
-                                summaryText = smsBody
-                            )
-                        } catch (e: Exception) {
-                            Log.w("VoskService", "SMS summary failed (non-fatal): ${e.message}")
-                        }
-                    }
-                }
 
                 kotlinx.coroutines.delay(10000)
                 updateNotification("Safety Guardian", "Continuous voice monitoring active")

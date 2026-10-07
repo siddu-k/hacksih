@@ -300,6 +300,8 @@ object AlarmSoundPlayer {
             putExtra("longitude", alertData["longitude"] ?: alertData["lastKnownLongitude"] ?: "")
             putExtra("alertId", alertData["alertId"] ?: "")
             putExtra("timestamp", alertData["timestamp"] ?: SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss", Locale.getDefault()).format(Date()))
+            putExtra("frontPhotoUrl", alertData["frontPhotoUrl"] ?: "")
+            putExtra("backPhotoUrl", alertData["backPhotoUrl"] ?: "")
             putExtra("fromNotification", true)
             putExtra("isSmsAlert", alertData["isSmsAlert"] == "true")
         }

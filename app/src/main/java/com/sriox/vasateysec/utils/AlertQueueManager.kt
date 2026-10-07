@@ -133,8 +133,9 @@ object AlertQueueManager {
                 for (alert in alerts) {
                     try {
                         Log.d(TAG, "Dispatching queued alert: ${alert.id}")
-                        // Send SMS without hitting universal cooldown check
-                        SmsHelper.sendEmergencySms(
+                        // Send SMS without hitting universal cooldown check.
+                        // Only drop from queue when SmsManager actually accepted it.
+                        val result = SmsHelper.sendEmergencySms(
                             context = context,
                             latitude = alert.latitude,
                             longitude = alert.longitude,
@@ -142,7 +143,11 @@ object AlertQueueManager {
                             situationSummary = alert.situationSummary,
                             isQueuedRetry = true
                         )
-                        removeAlert(context, alert.id)
+                        if (result is SmsHelper.SmsResult.Sent) {
+                            removeAlert(context, alert.id)
+                        } else {
+                            Log.w(TAG, "Queued alert ${alert.id} still failing: ${(result as SmsHelper.SmsResult.Failed).reason} — keeping in queue")
+                        }
                         // Brief pause between queued SMS sends
                         kotlinx.coroutines.delay(1000)
                     } catch (e: Exception) {

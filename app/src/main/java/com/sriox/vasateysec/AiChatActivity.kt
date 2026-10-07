@@ -15,7 +15,6 @@ import androidx.recyclerview.widget.RecyclerView
 import com.google.android.material.card.MaterialCardView
 import com.sriox.vasateysec.databinding.ActivityAiChatBinding
 import com.sriox.vasateysec.utils.LlamaBridge
-import com.sriox.vasateysec.utils.SituationSummarizer
 import com.sriox.vasateysec.utils.SmolLM2Helper
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay

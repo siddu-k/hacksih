@@ -49,8 +49,11 @@ class AddGuardianActivity : AppCompatActivity() {
         binding.addButton.setOnClickListener {
             val email = binding.emailInput.text.toString().trim()
             if (email.isNotEmpty()) {
-                val name = email.substringBefore("@")
-                saveSmsContact(name, email)
+                if (!android.util.Patterns.EMAIL_ADDRESS.matcher(email).matches()) {
+                    Toast.makeText(this, "Enter a valid email address", Toast.LENGTH_SHORT).show()
+                    return@setOnClickListener
+                }
+                Toast.makeText(this, "Email guardians need app + internet; SMS alert still needs a phone contact below.", Toast.LENGTH_LONG).show()
                 binding.emailInput.text?.clear()
             }
         }
@@ -110,6 +113,10 @@ class AddGuardianActivity : AppCompatActivity() {
     }
 
     private fun saveSmsContact(name: String, phone: String) {
+        if (!SmsHelper.isValidPhone(phone)) {
+            Toast.makeText(this, "Enter a valid phone number (min 7 digits)", Toast.LENGTH_SHORT).show()
+            return
+        }
         val userId = SessionManager.getUserId() ?: "local_user"
         val newContact = SmsContact(
             id = UUID.randomUUID().toString(),

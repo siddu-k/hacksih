@@ -46,6 +46,26 @@ object SOSHelper {
         
         (activity as LifecycleOwner).lifecycleScope.launch {
             try {
+                // Fail fast: SMS permission
+                if (ActivityCompat.checkSelfPermission(
+                    activity,
+                    Manifest.permission.SEND_SMS
+                ) != PackageManager.PERMISSION_GRANTED
+                ) {
+                    ActivityCompat.requestPermissions(activity, arrayOf(Manifest.permission.SEND_SMS), 101)
+                    Toast.makeText(activity, "SMS permission required to send alert", Toast.LENGTH_LONG).show()
+                    return@launch
+                }
+                // Fail fast: no contacts
+                val contacts = com.sriox.vasateysec.utils.SmsHelper.getFromLocalStorage(activity)
+                if (contacts.isEmpty()) {
+                    Toast.makeText(activity, "Add an emergency contact first (Guardians tab)", Toast.LENGTH_LONG).show()
+                    return@launch
+                }
+                if (contacts.none { com.sriox.vasateysec.utils.SmsHelper.isValidPhone(it.phone) }) {
+                    Toast.makeText(activity, "No valid phone numbers. Fix guardian contact numbers.", Toast.LENGTH_LONG).show()
+                    return@launch
+                }
                 // Get current location
                 val locationManager = activity.getSystemService(android.content.Context.LOCATION_SERVICE) as android.location.LocationManager
                 
@@ -85,7 +105,7 @@ object SOSHelper {
                 if (result.isSuccess) {
                     Toast.makeText(
                         activity,
-                        "Emergency alert sent to all guardians!",
+                        "Emergency alert sent to guardians!",
                         Toast.LENGTH_LONG
                     ).show()
                     val triggerIntent = Intent("com.sriox.vasateysec.ALERT_TRIGGERED")
