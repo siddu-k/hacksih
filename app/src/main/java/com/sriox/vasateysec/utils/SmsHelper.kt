@@ -137,23 +137,27 @@ object SmsHelper {
             return SmsResult.Failed("Hardware cooldown: next alert in ${remaining}s.")
         }
 
-        // Offline / Low Network Check: If no cellular signal or network is unavailable, enqueue for auto-dispatch
-        val isOffline = !NetworkMonitor.isCellularOrNetworkAvailable(context) || NetworkMonitor.getCurrentSignalLevel(context) == 0
-        if (!isQueuedRetry && isOffline) {
-            Log.w(TAG, "⚠️ Offline / No cellular signal detected! Enqueuing alert to AlertQueueManager...")
-            AlertQueueManager.enqueueAlert(
-                context = context,
-                latitude = latitude,
-                longitude = longitude,
-                situationSummary = situationSummary,
-                isHardware = isHardware
-            )
+        // Opportunistic flush: if we're online and older SOS are still queued
+        // (e.g. queued while the app was closed), send them first. Works from
+        // any entry point — voice, button, or hardware — no screen needed.
+        if (!isQueuedRetry) {
+            try {
+                val pending = AlertQueueManager.getQueueCount(context)
+                if (pending > 0 && NetworkMonitor.isCellularOrNetworkAvailable(context)) {
+                    Log.d(TAG, "Flushing $pending stale queued alert(s) before current SOS...")
+                    AlertQueueManager.flushQueue(context)
+                }
+            } catch (e: Exception) {
+                Log.w(TAG, "Pre-flush check failed (non-fatal): ${e.message}")
+            }
         }
 
         return withContext(Dispatchers.IO) {
             try {
                 // 1. SMS Sequence — only mark timestamp on real delivery to SmsManager.
-                val sentCount = sendSmsSequence(context, validContacts, latitude, longitude, situationSummary, photoLinks = photoLinks)
+                // NOTE: no pre-enqueue here. We queue only when the send below
+                // actually fails — pre-enqueueing caused duplicate SMS on flaky signal.
+                val sentCount = sendSmsSequence(context, validContacts, latitude, longitude, situationSummary, photoLinks = photoLinks, isHardware = isHardware)
                 if (sentCount > 0) {
                     // PERSIST the sent time only on actual success so failures don't block retries
                     settingsPrefs.edit().putLong(KEY_LAST_SENT_TIME, System.currentTimeMillis()).apply()
@@ -226,7 +230,7 @@ object SmsHelper {
         }
     }
 
-    private fun sendSmsSequence(context: Context, contacts: List<SmsContact>, latitude: Double?, longitude: Double?, situationSummary: String? = null, isFollowUp: Boolean = false, photoLinks: String? = null): Int {
+    private fun sendSmsSequence(context: Context, contacts: List<SmsContact>, latitude: Double?, longitude: Double?, situationSummary: String? = null, isFollowUp: Boolean = false, photoLinks: String? = null, isHardware: Boolean = false): Int {
         if (ContextCompat.checkSelfPermission(context, Manifest.permission.SEND_SMS) != PackageManager.PERMISSION_GRANTED) {
             Log.e(TAG, "sendSmsSequence aborted: SEND_SMS not granted")
             return 0
@@ -279,6 +283,12 @@ object SmsHelper {
 
             val sentIntent = Intent(ACTION_SMS_SENT).apply { 
                 putExtra("phone", phone)
+                // Location payload so SmsSentReceiver can re-queue this exact
+                // alert if the radio reports NO_SERVICE / RADIO_OFF async.
+                if (latitude != null) putExtra("latitude", latitude)
+                if (longitude != null) putExtra("longitude", longitude)
+                if (!cleanSummary.isNullOrBlank()) putExtra("situationSummary", cleanSummary)
+                putExtra("isHardware", isHardware)
                 setPackage(context.packageName)
             }
             val pendingIntent = PendingIntent.getBroadcast(context, phone.hashCode(), sentIntent, PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT)

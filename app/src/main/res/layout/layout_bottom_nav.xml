@@ -111,36 +111,6 @@
             </com.google.android.material.card.MaterialCardView>
         </FrameLayout>
 
-        <!-- Ghistory (placeholder, will be used for other feature) -->
-        <LinearLayout
-            android:id="@+id/navGhistory"
-            android:layout_width="0dp"
-            android:layout_height="wrap_content"
-            android:layout_weight="1"
-            android:orientation="vertical"
-            android:gravity="center"
-            android:padding="8dp"
-            android:clickable="true"
-            android:focusable="true">
-
-            <ImageView
-                android:id="@+id/iconGhistory"
-                android:layout_width="24dp"
-                android:layout_height="24dp"
-                android:src="@drawable/ic_history"
-                android:tint="@color/text_tertiary"
-                android:contentDescription="G History" />
-
-            <TextView
-                android:id="@+id/labelGhistory"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="Track"
-                android:textSize="11sp"
-                android:textColor="@color/text_tertiary"
-                android:layout_marginTop="4dp" />
-        </LinearLayout>
-
         <!-- Profile -->
         <LinearLayout
             android:id="@+id/navProfile"

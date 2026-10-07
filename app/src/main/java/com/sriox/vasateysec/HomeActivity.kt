@@ -337,7 +337,6 @@ class HomeActivity : AppCompatActivity(), NavigationView.OnNavigationItemSelecte
             override fun onNothingSelected(parent: AdapterView<*>?) {}
         }
 
-        binding.cardAISafetyHome.setOnClickListener { startActivity(Intent(this, AiChatActivity::class.java)) }
         binding.guardiansCard.setOnClickListener { startActivity(Intent(this, AddGuardianActivity::class.java)) }
         binding.historyCard.setOnClickListener { startActivity(Intent(this, AlertHistoryActivity::class.java)) }
         binding.myAlertsCard.setOnClickListener { startActivity(Intent(this, AlertHistoryActivity::class.java)) }
@@ -364,9 +363,6 @@ class HomeActivity : AppCompatActivity(), NavigationView.OnNavigationItemSelecte
         }
         findViewById<MaterialCardView>(R.id.sosButton)?.setOnClickListener { 
             SOSHelper.showSOSConfirmation(this) 
-        }
-        findViewById<LinearLayout>(R.id.navGhistory)?.setOnClickListener { 
-            startActivity(Intent(this, GuardianMapActivity::class.java).apply { flags = Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP }) 
         }
         findViewById<LinearLayout>(R.id.navProfile)?.setOnClickListener { 
             startActivity(Intent(this, EditProfileActivity::class.java).apply { flags = Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP }) 

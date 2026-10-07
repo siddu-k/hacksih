@@ -109,7 +109,6 @@ class AlertHistoryActivity : AppCompatActivity() {
         val navGuardians = findViewById<android.widget.LinearLayout>(R.id.navGuardians)
         val navHistory = findViewById<android.widget.LinearLayout>(R.id.navHistory)
         val sosButton = findViewById<com.google.android.material.card.MaterialCardView>(R.id.sosButton)
-        val navGhistory = findViewById<android.widget.LinearLayout>(R.id.navGhistory)
         val navProfile = findViewById<android.widget.LinearLayout>(R.id.navProfile)
 
         navGuardians?.setOnClickListener {
@@ -120,12 +119,6 @@ class AlertHistoryActivity : AppCompatActivity() {
         }
         sosButton?.setOnClickListener {
             com.sriox.vasateysec.utils.SOSHelper.showSOSConfirmation(this)
-        }
-        navGhistory?.setOnClickListener {
-            startActivity(Intent(this, GuardianMapActivity::class.java).apply {
-                flags = Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP
-            })
-            finish()
         }
         navProfile?.setOnClickListener {
             startActivity(Intent(this, EditProfileActivity::class.java).apply {
@@ -161,22 +154,26 @@ class AlertHistoryActivity : AppCompatActivity() {
 
             holder.binding.alertTime.text = alert.created_at ?: "Recently"
 
-            val frontFile = alert.front_photo_url?.let { File(it) }
-            val backFile = alert.back_photo_url?.let { File(it) }
-            val hasFront = frontFile?.exists() == true
-            val hasBack = backFile?.exists() == true
+            val frontSrc = com.sriox.vasateysec.utils.PhotoFullscreenViewer.resolveSource(alert.front_photo_url)
+            val backSrc = com.sriox.vasateysec.utils.PhotoFullscreenViewer.resolveSource(alert.back_photo_url)
 
-            if (hasFront || hasBack) {
+            if (frontSrc != null || backSrc != null) {
                 holder.binding.photosContainer.visibility = View.VISIBLE
-                if (hasFront) {
+                if (frontSrc != null) {
                     holder.binding.frontPhotoThumb.visibility = View.VISIBLE
-                    com.bumptech.glide.Glide.with(context).load(frontFile).into(holder.binding.frontPhotoThumb)
+                    com.bumptech.glide.Glide.with(context).load(frontSrc).centerCrop().into(holder.binding.frontPhotoThumb)
+                    holder.binding.frontPhotoThumb.setOnClickListener {
+                        com.sriox.vasateysec.utils.PhotoFullscreenViewer.show(context, frontSrc)
+                    }
                 } else {
                     holder.binding.frontPhotoThumb.visibility = View.GONE
                 }
-                if (hasBack) {
+                if (backSrc != null) {
                     holder.binding.backPhotoThumb.visibility = View.VISIBLE
-                    com.bumptech.glide.Glide.with(context).load(backFile).into(holder.binding.backPhotoThumb)
+                    com.bumptech.glide.Glide.with(context).load(backSrc).centerCrop().into(holder.binding.backPhotoThumb)
+                    holder.binding.backPhotoThumb.setOnClickListener {
+                        com.sriox.vasateysec.utils.PhotoFullscreenViewer.show(context, backSrc)
+                    }
                 } else {
                     holder.binding.backPhotoThumb.visibility = View.GONE
                 }

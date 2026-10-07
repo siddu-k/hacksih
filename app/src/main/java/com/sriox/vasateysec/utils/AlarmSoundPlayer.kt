@@ -97,7 +97,7 @@ object AlarmSoundPlayer {
             // 3. Play High-Decibel Beep-Beep Siren
             startBeepSirenLoop(context)
 
-            // 4. Vibrate in rapid emergency pattern
+            // 4. Vibrate in rapid emergency pattern (~5s to match the tone blast)
             vibrator = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
                 val vibratorManager = context.getSystemService(Context.VIBRATOR_MANAGER_SERVICE) as VibratorManager
                 vibratorManager.defaultVibrator
@@ -106,7 +106,7 @@ object AlarmSoundPlayer {
                 context.getSystemService(Context.VIBRATOR_SERVICE) as Vibrator
             }
 
-            val pattern = longArrayOf(0, 300, 100, 300, 100, 300, 100, 300, 100, 300, 100, 300, 100, 300, 100, 300, 100, 300, 100, 300)
+            val pattern = longArrayOf(0, 500, 200, 500, 200, 500, 200, 500, 200, 500)
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
                 vibrator?.vibrate(VibrationEffect.createWaveform(pattern, -1))
             } else {
@@ -123,24 +123,26 @@ object AlarmSoundPlayer {
     }
 
     /**
-     * Synthesizes a piercing 4-second dual-tone emergency siren (950 Hz & 1550 Hz alternating wails)
-     * using AudioTrack on USAGE_ALARM with FLAG_AUDIBILITY_ENFORCED.
+     * Government-style emergency attention signal (EAS/WEA tone):
+     * 853 Hz + 960 Hz sine waves played SIMULTANEOUSLY, continuous for
+     * 5 seconds — the classic "government alert" dual-tone blast heard on
+     * weather / disaster cell-broadcasts, not alternating beeps.
      */
     private fun startBeepSirenLoop(context: Context) {
         sirenJob = CoroutineScope(Dispatchers.Default).launch {
             try {
                 val sampleRate = 44100
-                val durationSeconds = 4.2
+                val durationSeconds = 5.0
                 val totalSamples = (sampleRate * durationSeconds).toInt()
                 val sirenBuffer = ShortArray(totalSamples)
 
-                // Alternating high-urgency emergency tones: 950 Hz & 1550 Hz alternating every 250ms
-                val pulseSamples = (sampleRate * 0.25).toInt()
+                // EAS attention signal: both tones at once, full 5s, no gaps.
+                val freqA = 853.0
+                val freqB = 960.0
                 for (i in 0 until totalSamples) {
-                    val pulseIndex = (i / pulseSamples) % 2
-                    val baseFreq = if (pulseIndex == 0) 950.0 else 1550.0
-                    val angle = 2.0 * Math.PI * baseFreq * i / sampleRate
-                    sirenBuffer[i] = (Math.sin(angle) * 32000.0).toInt().toShort()
+                    val a = Math.sin(2.0 * Math.PI * freqA * i / sampleRate)
+                    val b = Math.sin(2.0 * Math.PI * freqB * i / sampleRate)
+                    sirenBuffer[i] = ((a + b) * 0.5 * 32000.0).toInt().toShort()
                 }
 
                 val minBuf = AudioTrack.getMinBufferSize(

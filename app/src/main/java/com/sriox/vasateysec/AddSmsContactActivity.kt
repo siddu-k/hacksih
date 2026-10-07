@@ -93,7 +93,6 @@ class AddSmsContactActivity : AppCompatActivity() {
         val navGuardians = findViewById<android.widget.LinearLayout>(R.id.navGuardians)
         val navHistory = findViewById<android.widget.LinearLayout>(R.id.navHistory)
         val sosButton = findViewById<com.google.android.material.card.MaterialCardView>(R.id.sosButton)
-        val navGhistory = findViewById<android.widget.LinearLayout>(R.id.navGhistory)
         val navProfile = findViewById<android.widget.LinearLayout>(R.id.navProfile)
 
         navGuardians?.setOnClickListener {
@@ -108,11 +107,6 @@ class AddSmsContactActivity : AppCompatActivity() {
         }
         sosButton?.setOnClickListener {
             com.sriox.vasateysec.utils.SOSHelper.showSOSConfirmation(this)
-        }
-        navGhistory?.setOnClickListener {
-            val intent = android.content.Intent(this, GuardianMapActivity::class.java)
-            startActivity(intent)
-            finish()
         }
         navProfile?.setOnClickListener {
             val intent = android.content.Intent(this, EditProfileActivity::class.java)

@@ -16,6 +16,7 @@ import androidx.core.app.NotificationCompat
 import com.sriox.vasateysec.utils.AlertManager
 import com.sriox.vasateysec.utils.CameraManager
 import com.sriox.vasateysec.utils.LocationManager
+import com.sriox.vasateysec.utils.VoiceFeedback
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -44,6 +45,7 @@ class VoskWakeWordService : Service(), RecognitionListener {
     private val mainHandler = Handler(Looper.getMainLooper())
     private var isListening = false
     private var wakeLock: android.os.PowerManager.WakeLock? = null
+    private var reconnectCallback: android.net.ConnectivityManager.NetworkCallback? = null
 
     override fun onCreate() {
         super.onCreate()
@@ -62,28 +64,92 @@ class VoskWakeWordService : Service(), RecognitionListener {
 
         initVosk()
         startWatchdog()
+        startBackgroundQueueFlush()
+    }
+
+    /**
+     * HomeActivity's NetworkMonitor only lives while the app is open.
+     * This service runs 24/7, so it registers its own reconnect listener:
+     * any queued SOS auto-sends the moment cellular/data returns,
+     * even with the app closed.
+     */
+    private fun startBackgroundQueueFlush() {
+        try {
+            val cm = getSystemService(Context.CONNECTIVITY_SERVICE) as? android.net.ConnectivityManager
+                ?: return
+            val request = android.net.NetworkRequest.Builder()
+                .addCapability(android.net.NetworkCapabilities.NET_CAPABILITY_INTERNET)
+                .build()
+            val callback = object : android.net.ConnectivityManager.NetworkCallback() {
+                override fun onAvailable(network: android.net.Network) {
+                    super.onAvailable(network)
+                    Log.d("VoskService", "📶 Reconnected in background — flushing queued SOS alerts")
+                    com.sriox.vasateysec.utils.AlertQueueManager.flushQueue(this@VoskWakeWordService)
+                }
+            }
+            cm.registerNetworkCallback(request, callback)
+            reconnectCallback = callback
+        } catch (e: Exception) {
+            Log.w("VoskService", "Background queue-flush hook failed (non-fatal): ${e.message}")
+        }
     }
 
     private fun initVosk() {
         Log.d("VoskService", "Initializing Vosk Engine...")
         Thread {
-            val prefs = getSharedPreferences("vasatey_prefs", MODE_PRIVATE)
-            val wakeWord = prefs.getString("wake_word", "help me") ?: "help me"
-            StorageService.unpack(this, "model", "model",
-                { model: Model? ->
-                    sharedModel = model
-                    try {
-                        val recognizer = Recognizer(model, 16000f, "[\"$wakeWord\", \"[unk]\"]")
-                        speechService = SpeechService(recognizer, 16000f)
-                        startListening()
-                    } catch (e: IOException) {
-                        Log.e("VoskService", "Recognizer initialization failed", e)
-                    }
-                },
-                { exception: IOException ->
-                    Log.e("VoskService", "Failed to unpack model", exception)
-                })
+            val lang = com.sriox.vasateysec.utils.VoiceLanguage.get(this)
+            val rawWake = com.sriox.vasateysec.utils.VoiceLanguage.getWakeWord(this)
+            val wakeWord = com.sriox.vasateysec.utils.VoiceLanguage.sanitizeForGrammar(rawWake, lang)
+            Log.d("VoskService", "Voice language=$lang wakeWord=$wakeWord")
+
+            // Telugu + model downloaded → use it; otherwise fall back to bundled English.
+            if (lang == com.sriox.vasateysec.utils.VoiceLanguage.TE &&
+                com.sriox.vasateysec.utils.VoskModelManager.isTeluguReady(this)
+            ) {
+                try {
+                    try { sharedModel?.close() } catch (_: Exception) {}
+                    val teModel = Model(
+                        com.sriox.vasateysec.utils.VoskModelManager.teDir(this).absolutePath
+                    )
+                    sharedModel = teModel
+                    startWithModel(teModel, wakeWord)
+                } catch (e: Exception) {
+                    Log.w("VoskService", "Telugu model failed (${e.message}), falling back to English")
+                    initEnglishModel(wakeWord)
+                }
+            } else {
+                if (lang == com.sriox.vasateysec.utils.VoiceLanguage.TE) {
+                    Log.w("VoskService", "Telugu selected but model not downloaded — using English until download finishes")
+                }
+                initEnglishModel(
+                    if (lang == com.sriox.vasateysec.utils.VoiceLanguage.TE)
+                        com.sriox.vasateysec.utils.VoiceLanguage.DEFAULT_EN_WAKE else wakeWord
+                )
+            }
         }.start()
+    }
+
+    private fun initEnglishModel(wakeWord: String) {
+        StorageService.unpack(this, "model", "model",
+            { model: Model? ->
+                try { sharedModel?.close() } catch (_: Exception) {}
+                sharedModel = model
+                try {
+                    startWithModel(model, wakeWord)
+                } catch (e: IOException) {
+                    Log.e("VoskService", "Recognizer initialization failed", e)
+                }
+            },
+            { exception: IOException ->
+                Log.e("VoskService", "Failed to unpack model", exception)
+            })
+    }
+
+    @Throws(IOException::class)
+    private fun startWithModel(model: Model?, wakeWord: String) {
+        val recognizer = Recognizer(model, 16000f, "[\"$wakeWord\", \"[unk]\"]")
+        speechService = SpeechService(recognizer, 16000f)
+        startListening()
     }
 
     private fun startListening() {
@@ -160,7 +226,7 @@ class VoskWakeWordService : Service(), RecognitionListener {
                 val currentTime = SystemClock.elapsedRealtime()
                 val settings = getSharedPreferences("vasatey_settings", MODE_PRIVATE)
                 val isDoubleWordEnabled = settings.getBoolean("double_word_enabled", true)
-                val wakeWord = getSharedPreferences("vasatey_prefs", MODE_PRIVATE).getString("wake_word", "help me") ?: "help me"
+                val wakeWord = com.sriox.vasateysec.utils.VoiceLanguage.getWakeWord(this@VoskWakeWordService)
 
                 if (resultText.contains(wakeWord, ignoreCase = true)) {
                     if (isDoubleWordEnabled) {
@@ -200,6 +266,8 @@ class VoskWakeWordService : Service(), RecognitionListener {
             return
         }
         lastAlertTime = currentTime
+        // Instant voice confirmation on this phone so the user knows SOS fired.
+        VoiceFeedback.speakDetection(this)
         updateNotification("SOS ACTIVATED", "Initiating emergency sequence...")
         triggerEmergencyAlert()
     }
@@ -264,6 +332,13 @@ class VoskWakeWordService : Service(), RecognitionListener {
         super.onDestroy()
         isListening = false
         mainHandler.removeCallbacksAndMessages(null)
+        try {
+            reconnectCallback?.let {
+                (getSystemService(Context.CONNECTIVITY_SERVICE) as? android.net.ConnectivityManager)
+                    ?.unregisterNetworkCallback(it)
+            }
+        } catch (_: Exception) {}
+        reconnectCallback = null
         speechService?.stop()
         speechService?.shutdown()
         try {

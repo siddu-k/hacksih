@@ -489,66 +489,6 @@
                     </LinearLayout>
                 </com.google.android.material.card.MaterialCardView>
 
-                <!-- AI Assistant Card -->
-                <com.google.android.material.card.MaterialCardView
-                    android:id="@+id/cardAISafetyHome"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:layout_marginBottom="16dp"
-                    app:cardBackgroundColor="#2A2A2A"
-                    app:cardCornerRadius="24dp"
-                    app:cardElevation="4dp"
-                    app:strokeWidth="1dp"
-                    app:strokeColor="#404040">
-
-                    <LinearLayout
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:orientation="horizontal"
-                        android:padding="20dp"
-                        android:gravity="center_vertical">
-
-                        <ImageView
-                            android:layout_width="48dp"
-                            android:layout_height="48dp"
-                            android:src="@drawable/ic_ai_assistant"
-                            android:tint="@color/violet"
-                            android:padding="12dp"
-                            android:background="@drawable/bg_rounded_card" />
-
-                        <LinearLayout
-                            android:layout_width="0dp"
-                            android:layout_height="wrap_content"
-                            android:layout_weight="1"
-                            android:layout_marginStart="16dp"
-                            android:orientation="vertical">
-
-                            <TextView
-                                android:layout_width="wrap_content"
-                                android:layout_height="wrap_content"
-                                android:text="Safety Assistant"
-                                android:textColor="@color/text_primary"
-                                android:textSize="18sp"
-                                android:textStyle="bold" />
-
-                            <TextView
-                                android:layout_width="wrap_content"
-                                android:layout_height="wrap_content"
-                                android:text="Ask AI for instant safety advice"
-                                android:textColor="@color/text_secondary"
-                                android:textSize="14sp"
-                                android:layout_marginTop="4dp" />
-                        </LinearLayout>
-
-                        <ImageView
-                            android:layout_width="24dp"
-                            android:layout_height="24dp"
-                            android:src="@drawable/ic_arrow_forward"
-                            android:tint="@color/violet" />
-                    </LinearLayout>
-                </com.google.android.material.card.MaterialCardView>
-
-
                 <!-- Quick Actions Grid -->
                 <TextView
                     android:layout_width="wrap_content"

@@ -76,10 +76,8 @@
         <activity android:name=".AddSmsContactActivity" android:exported="false" android:theme="@style/Theme.Vasateysec" />
         <activity android:name=".EditProfileActivity" android:exported="false" />
         <activity android:name=".AlertHistoryActivity" android:exported="false" />
-        <activity android:name=".GuardianMapActivity" android:exported="false" android:theme="@style/Theme.Vasateysec" />
         <activity android:name=".SettingsActivity" android:exported="false" android:theme="@style/Theme.Vasateysec" />
         <activity android:name=".EmergencyAlertViewerActivity" android:exported="true" android:launchMode="singleTask" android:showWhenLocked="true" android:turnScreenOn="true" android:theme="@style/Theme.Vasateysec" />
-        <activity android:name=".AiChatActivity" android:exported="false" android:theme="@style/Theme.Vasateysec" />
         <activity android:name=".BleDeviceScanActivity" android:exported="false" android:theme="@style/Theme.Vasateysec" />
 
         <service android:name=".VoskWakeWordService" android:foregroundServiceType="microphone" android:exported="false" />

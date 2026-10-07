@@ -163,6 +163,34 @@
                                 android:textSize="16sp" />
                         </com.google.android.material.textfield.TextInputLayout>
 
+                        <!-- Voice Language Dropdown -->
+                        <TextView
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="Voice Language"
+                            android:textColor="@color/text_primary"
+                            android:textSize="14sp"
+                            android:textStyle="bold"
+                            android:layout_marginBottom="8dp" />
+
+                        <Spinner
+                            android:id="@+id/languageSpinner"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:layout_marginBottom="8dp"
+                            android:background="@drawable/bg_rounded_card"
+                            android:padding="12dp" />
+
+                        <TextView
+                            android:id="@+id/tvTeluguModelStatus"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text=""
+                            android:textColor="@color/text_secondary"
+                            android:textSize="12sp"
+                            android:layout_marginBottom="16dp"
+                            android:visibility="gone" />
+
                         <!-- Wake Word Input -->
                         <com.google.android.material.textfield.TextInputLayout
                             android:id="@+id/wakeWordInputLayout"

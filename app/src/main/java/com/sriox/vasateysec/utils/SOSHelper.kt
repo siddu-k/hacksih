@@ -43,6 +43,9 @@ object SOSHelper {
             Toast.makeText(activity, "Unable to trigger alert", Toast.LENGTH_SHORT).show()
             return
         }
+
+        // Spoken confirmation on this phone.
+        com.sriox.vasateysec.utils.VoiceFeedback.speakManualSos(activity)
         
         (activity as LifecycleOwner).lifecycleScope.launch {
             try {

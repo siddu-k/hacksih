@@ -16,7 +16,6 @@ import com.sriox.vasateysec.databinding.ActivityHelpRequestBinding
 import com.sriox.vasateysec.utils.AlarmSoundPlayer
 import com.sriox.vasateysec.utils.EmergencySmsReceiver
 import com.sriox.vasateysec.utils.SessionManager
-import java.io.File
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
@@ -198,20 +197,21 @@ class EmergencyAlertViewerActivity : AppCompatActivity(), OnMapReadyCallback {
         if (!front.isNullOrEmpty() || !back.isNullOrEmpty()) {
             binding.photosContainer.visibility = View.VISIBLE
             binding.photosHeader.visibility = View.VISIBLE
-            if (!front.isNullOrEmpty()) {
+            binding.photosHeader.text = "Evidence Photos — tap to view full"
+            val frontSrc = com.sriox.vasateysec.utils.PhotoFullscreenViewer.resolveSource(front)
+            if (frontSrc != null) {
                 binding.frontPhotoCard.visibility = View.VISIBLE
-                if (front.startsWith("/")) {
-                    Glide.with(this).load(File(front)).into(binding.frontPhoto)
-                } else {
-                    Glide.with(this).load(front).into(binding.frontPhoto)
+                Glide.with(this).load(frontSrc).centerCrop().into(binding.frontPhoto)
+                binding.frontPhoto.setOnClickListener {
+                    com.sriox.vasateysec.utils.PhotoFullscreenViewer.show(this, frontSrc)
                 }
             }
-            if (!back.isNullOrEmpty()) {
+            val backSrc = com.sriox.vasateysec.utils.PhotoFullscreenViewer.resolveSource(back)
+            if (backSrc != null) {
                 binding.backPhotoCard.visibility = View.VISIBLE
-                if (back.startsWith("/")) {
-                    Glide.with(this).load(File(back)).into(binding.backPhoto)
-                } else {
-                    Glide.with(this).load(back).into(binding.backPhoto)
+                Glide.with(this).load(backSrc).centerCrop().into(binding.backPhoto)
+                binding.backPhoto.setOnClickListener {
+                    com.sriox.vasateysec.utils.PhotoFullscreenViewer.show(this, backSrc)
                 }
             }
         }
