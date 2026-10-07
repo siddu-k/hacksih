@@ -70,6 +70,7 @@
 
         <activity android:name=".LoginActivity" android:exported="false" />
         <activity android:name=".SignupActivity" android:exported="false" />
+        <!-- Guest-only mode: Login/Signup kept in source but not launched. -->
         <activity android:name=".HomeActivity" android:exported="false" android:theme="@style/Theme.Vasateysec" />
         <activity android:name=".MainActivity" android:exported="false" />
         <activity android:name=".AddGuardianActivity" android:exported="false" />

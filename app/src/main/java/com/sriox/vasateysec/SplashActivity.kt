@@ -12,43 +12,42 @@ import kotlinx.coroutines.launch
 
 @SuppressLint("CustomSplashScreen")
 class SplashActivity : AppCompatActivity() {
-    
+
     private val TAG = "SplashActivity"
-    
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_splash)
-        
-        validateSessionAndNavigate()
+
+        // Guest-only mode: no login screen. Ensure a guest session exists,
+        // then land on Home.
+        ensureGuestSession()
+        navigateToHome()
     }
-    
-    private fun validateSessionAndNavigate() {
-        lifecycleScope.launch {
-            delay(1000)
-            Log.d(TAG, "Checking local session...")
-            
-            val hasLocalSession = SessionManager.isLoggedIn()
-            Log.d(TAG, "Local session exists: $hasLocalSession")
-            
-            if (hasLocalSession) {
-                navigateToHome()
-            } else {
-                navigateToLogin()
+
+    private fun ensureGuestSession() {
+        try {
+            if (!SessionManager.isLoggedIn()) {
+                Log.d(TAG, "No session — creating a guest session")
+                SessionManager.saveSession(
+                    userId = java.util.UUID.randomUUID().toString(),
+                    email = "",
+                    name = "Guest",
+                    phone = ""
+                )
             }
+        } catch (e: Exception) {
+            Log.w(TAG, "Guest session setup failed: ${e.message}")
         }
     }
-    
+
     private fun navigateToHome() {
-        val intent = Intent(this, HomeActivity::class.java)
-        intent.flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
-        startActivity(intent)
-        finish()
-    }
-    
-    private fun navigateToLogin() {
-        val intent = Intent(this, LoginActivity::class.java)
-        intent.flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
-        startActivity(intent)
-        finish()
+        lifecycleScope.launch {
+            delay(800)
+            val intent = Intent(this@SplashActivity, HomeActivity::class.java)
+            intent.flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
+            startActivity(intent)
+            finish()
+        }
     }
 }

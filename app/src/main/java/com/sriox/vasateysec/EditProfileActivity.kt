@@ -51,12 +51,17 @@ class EditProfileActivity : AppCompatActivity() {
     }
 
     private fun logoutUser() {
+        // Guest-only: just reset the local guest profile, no login page.
         SessionManager.clearSession()
-        val intent = Intent(this@EditProfileActivity, LoginActivity::class.java).apply {
-            flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
-        }
-        startActivity(intent)
+        SessionManager.saveSession(
+            userId = java.util.UUID.randomUUID().toString(),
+            email = "",
+            name = "Guest",
+            phone = ""
+        )
+        Toast.makeText(this, "Guest profile reset", Toast.LENGTH_SHORT).show()
         finish()
+        startActivity(Intent(this@EditProfileActivity, HomeActivity::class.java))
     }
 
     private fun setupHeader() {

@@ -295,9 +295,15 @@ class HomeActivity : AppCompatActivity(), NavigationView.OnNavigationItemSelecte
     }
 
     private fun ensureSessionValid() {
+        // Guest-only: never bounce to a login screen. If session is missing,
+        // create a local guest session and stay on Home.
         if (!SessionManager.isLoggedIn()) {
-            startActivity(Intent(this, LoginActivity::class.java).apply { flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK })
-            finish()
+            SessionManager.saveSession(
+                userId = java.util.UUID.randomUUID().toString(),
+                email = "",
+                name = "Guest",
+                phone = ""
+            )
         }
     }
 
@@ -420,11 +426,17 @@ class HomeActivity : AppCompatActivity(), NavigationView.OnNavigationItemSelecte
     override fun onNavigationItemSelected(item: MenuItem): Boolean = true
 
     private fun logout() {
+        // Guest-only: logging out just resets the guest profile, never shows a login page.
         SessionManager.clearSession()
-        startActivity(Intent(this@HomeActivity, LoginActivity::class.java).apply { 
-            flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK 
-        })
+        SessionManager.saveSession(
+            userId = java.util.UUID.randomUUID().toString(),
+            email = "",
+            name = "Guest",
+            phone = ""
+        )
+        Toast.makeText(this@HomeActivity, "Guest profile reset", Toast.LENGTH_SHORT).show()
         finish()
+        startActivity(Intent(this@HomeActivity, HomeActivity::class.java))
     }
 
     private fun requestAllPermissions() {

@@ -8,6 +8,8 @@ import android.content.Context
 import android.content.Intent
 import android.os.Build
 import android.os.Handler
+import android.os.PowerManager
+import android.os.PowerManager.WakeLock
 import android.os.IBinder
 import android.os.Looper
 import android.os.SystemClock
@@ -44,7 +46,7 @@ class VoskWakeWordService : Service(), RecognitionListener {
     
     private val mainHandler = Handler(Looper.getMainLooper())
     private var isListening = false
-    private var wakeLock: android.os.PowerManager.WakeLock? = null
+    private var wakeLock: WakeLock? = null
     private var reconnectCallback: android.net.ConnectivityManager.NetworkCallback? = null
 
     override fun onCreate() {
@@ -52,8 +54,8 @@ class VoskWakeWordService : Service(), RecognitionListener {
         
         // Acquire PARTIAL_WAKE_LOCK to keep CPU awake for continuous voice monitoring when screen is turned off
         try {
-            val powerManager = getSystemService(Context.POWER_SERVICE) as? android.os.PowerManager
-            wakeLock = powerManager?.newWakeLock(android.os.PowerManager.PARTIAL_WAKE_LOCK, "Vasateysec:WakeWordWakeLock")?.apply {
+            val powerManager = getSystemService(Context.POWER_SERVICE) as? PowerManager
+            wakeLock = powerManager?.newWakeLock(PowerManager.PARTIAL_WAKE_LOCK, "Vasateysec:WakeWordWakeLock")?.apply {
                 setReferenceCounted(false)
                 acquire()
             }
@@ -188,6 +190,8 @@ class VoskWakeWordService : Service(), RecognitionListener {
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         startForeground(NOTIFICATION_ID, createNotification("Safety Guardian", "Continuous voice monitoring active"))
+        // Re-arm the background queue-flush hook on every restart (system restarts it).
+        startBackgroundQueueFlush()
         return START_STICKY
     }
 
