@@ -46,19 +46,30 @@ object SOSHelper {
 
         // Spoken confirmation on this phone.
         com.sriox.vasateysec.utils.VoiceFeedback.speakManualSos(activity)
-        
+
         (activity as LifecycleOwner).lifecycleScope.launch {
             try {
-                // Fail fast: SMS permission
-                if (ActivityCompat.checkSelfPermission(
-                    activity,
-                    Manifest.permission.SEND_SMS
-                ) != PackageManager.PERMISSION_GRANTED
-                ) {
-                    ActivityCompat.requestPermissions(activity, arrayOf(Manifest.permission.SEND_SMS), 101)
-                    Toast.makeText(activity, "SMS permission required to send alert", Toast.LENGTH_LONG).show()
+                // Permissions check first so location/photos don't silently fail.
+                val missing = mutableListOf<String>()
+                if (ActivityCompat.checkSelfPermission(activity, Manifest.permission.SEND_SMS) != PackageManager.PERMISSION_GRANTED)
+                    missing.add("SMS")
+                if (ActivityCompat.checkSelfPermission(activity, Manifest.permission.CAMERA) != PackageManager.PERMISSION_GRANTED)
+                    missing.add("Camera")
+                if (ActivityCompat.checkSelfPermission(activity, Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED)
+                    missing.add("Location")
+                if (missing.isNotEmpty()) {
+                    val toReq = missing.map {
+                        when (it) {
+                            "SMS" -> Manifest.permission.SEND_SMS
+                            "Camera" -> Manifest.permission.CAMERA
+                            else -> Manifest.permission.ACCESS_FINE_LOCATION
+                        }
+                    }.toTypedArray()
+                    ActivityCompat.requestPermissions(activity, toReq, 126)
+                    Toast.makeText(activity, "Grant: ${missing.joinToString(", ")} — then tap SOS again", Toast.LENGTH_LONG).show()
                     return@launch
                 }
+
                 // Fail fast: no contacts
                 val contacts = com.sriox.vasateysec.utils.SmsHelper.getFromLocalStorage(activity)
                 if (contacts.isEmpty()) {
@@ -69,27 +80,25 @@ object SOSHelper {
                     Toast.makeText(activity, "No valid phone numbers. Fix guardian contact numbers.", Toast.LENGTH_LONG).show()
                     return@launch
                 }
-                // Get current location
-                val locationManager = activity.getSystemService(android.content.Context.LOCATION_SERVICE) as android.location.LocationManager
-                
-                if (ActivityCompat.checkSelfPermission(
-                    activity,
-                    Manifest.permission.ACCESS_FINE_LOCATION
-                ) != PackageManager.PERMISSION_GRANTED
-                ) {
-                    Toast.makeText(activity, "Location permission required", Toast.LENGTH_SHORT).show()
-                    return@launch
+
+                // Use the SAME location engine as voice path (5-strategy fallback).
+                Toast.makeText(activity, "Getting location…", Toast.LENGTH_SHORT).show()
+                // (location fetched below)
+
+                // Manual SOS now uses the SAME 5-strategy location engine:
+                // last-known → fresh GPS/Network → system → passive → stale.
+                // This replaces the old GPS-only lastKnown which returned null indoors.
+                val location = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
+                    com.sriox.vasateysec.utils.LocationManager.getCurrentLocation(activity)
                 }
-                
-                // Try to get last known location
-                val location = locationManager.getLastKnownLocation(android.location.LocationManager.GPS_PROVIDER)
-                    ?: locationManager.getLastKnownLocation(android.location.LocationManager.NETWORK_PROVIDER)
-                
                 val latitude = location?.latitude
                 val longitude = location?.longitude
                 val accuracy = location?.accuracy
-                
+
                 android.util.Log.d("SOSHelper", "Manual SOS: lat=$latitude, lon=$longitude, accuracy=$accuracy")
+                if (location == null) {
+                    Toast.makeText(activity, "No GPS fix yet — move near a window / outdoors and tap SOS again", Toast.LENGTH_LONG).show()
+                }
                 
                 // Show progress
                 Toast.makeText(activity, "Capturing photos and sending alert...", Toast.LENGTH_SHORT).show()

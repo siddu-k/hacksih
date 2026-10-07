@@ -65,7 +65,7 @@ object AlarmSoundPlayer {
             return
         }
 
-        Log.d(TAG, "🚨 TRIGGERING LOUD SIREN ALARM: $title | Data: $alertData")
+        Log.d(TAG, "🚨 TRIGGERING EMERGENCY SIREN: $title | Data: $alertData")
 
         try {
             // 1. Force Maximize Audio Volume & Override Silent/DND
@@ -94,10 +94,10 @@ object AlarmSoundPlayer {
             // 2. Stop any previous alarm instance
             stopAlarm(context)
 
-            // 3. Play High-Decibel Beep-Beep Siren
-            startBeepSirenLoop(context)
+            // 3. Play the REAL siren MP3 for 5 seconds — max volume, no filtering
+            startSirenMp3(context)
 
-            // 4. Vibrate in rapid emergency pattern (~5s to match the tone blast)
+            // 4. Vibrate with it (~5s)
             vibrator = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
                 val vibratorManager = context.getSystemService(Context.VIBRATOR_MANAGER_SERVICE) as VibratorManager
                 vibratorManager.defaultVibrator
@@ -119,6 +119,48 @@ object AlarmSoundPlayer {
 
         } catch (e: Exception) {
             Log.e(TAG, "Failed to start emergency siren alarm", e)
+        }
+    }
+
+    /**
+     * Play the bundled siren MP3 (~8s file) for exactly 5 seconds at full volume.
+     * Using MediaPlayer on the ALARM usage stream — cuts through silent/DND.
+     */
+    private fun startSirenMp3(context: Context) {
+        val mp = MediaPlayer()
+        mediaPlayer = mp
+        try {
+            mp.setDataSource(context.resources.openRawResourceFd(R.raw.emergency_siren))
+            mp.setAudioAttributes(
+                AudioAttributes.Builder()
+                    .setUsage(AudioAttributes.USAGE_ALARM)
+                    .setContentType(AudioAttributes.CONTENT_TYPE_MUSIC)
+                    .setFlags(AudioAttributes.FLAG_AUDIBILITY_ENFORCED)
+                    .build()
+            )
+            mp.setVolume(1.0f, 1.0f)
+            mp.isLooping = false
+            mp.prepare()
+            mp.start()
+            Log.d(TAG, "🚨 Siren MP3 started (5s)")
+
+            // Hard cutoff at 5 seconds
+            CoroutineScope(Dispatchers.Default).launch {
+                kotlinx.coroutines.delay(5000L)
+                try {
+                    if (mediaPlayer === mp && mp.isPlaying) {
+                        mp.stop()
+                        mp.release()
+                        mediaPlayer = null
+                        Log.d(TAG, "Siren MP3 stopped at 5s cutoff")
+                    }
+                } catch (_: Exception) {}
+            }
+        } catch (e: Exception) {
+            Log.e(TAG, "Siren MP3 failed, falling back to ringtone: ${e.message}")
+            try { mp.release() } catch (_: Exception) {}
+            mediaPlayer = null
+            fallbackRingtone(context)
         }
     }
 

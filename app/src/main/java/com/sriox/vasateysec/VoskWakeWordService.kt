@@ -280,10 +280,15 @@ class VoskWakeWordService : Service(), RecognitionListener {
             try {
                 updateNotification("SOS: Processing", "Getting location...")
                 val location = LocationManager.getCurrentLocation(this@VoskWakeWordService)
+                Log.d("VoskService", "📍 location=${location?.latitude},${location?.longitude} acc=${location?.accuracy}")
+                if (location == null) {
+                    updateNotification("SOS: Processing", "No GPS fix yet — using last known / none")
+                }
 
                 // Unconditionally capture evidence photos (saved locally to emergency_evidence folder)
                 updateNotification("SOS: Processing", "Capturing evidence photos...")
                 val photos = CameraManager.captureEmergencyPhotos(this@VoskWakeWordService)
+                Log.d("VoskService", "📸 photos front=${photos.frontPhoto?.absolutePath} back=${photos.backPhoto?.absolutePath}")
 
                 // Dispatch offline SMS Alert and/or Auto Call
                 updateNotification("SOS: Sending", "Dispatching emergency alerts...")
