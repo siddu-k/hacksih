@@ -94,8 +94,12 @@ class EditProfileActivity : AppCompatActivity() {
 
     private fun onLanguagePicked(lang: String) {
         VoiceLanguage.set(this, lang)
-        // Auto-fill the matching default wake word (user can still type their own).
-        binding.wakeWordInput.setText(VoiceLanguage.defaultWakeWord(lang))
+        // Auto-fill + persist the matching default wake word so the engine
+        // picks it up even if the user doesn't press Save afterwards.
+        val def = VoiceLanguage.defaultWakeWord(lang)
+        binding.wakeWordInput.setText(def)
+        VoiceLanguage.setWakeWord(this, def)
+        prefs.edit().putString("wake_word", def).apply()
         if (lang == VoiceLanguage.TE && !VoskModelManager.isTeluguReady(this)) {
             downloadTeluguModel()
         } else {
@@ -174,7 +178,11 @@ class EditProfileActivity : AppCompatActivity() {
     /** Reload the voice engine so a new language / wake word takes effect now. */
     private fun restartVoiceService() {
         try {
-            if (!prefs.getBoolean("voice_alert_enabled", false)) return
+            // SettingsActivity mirrors the toggle into both prefs files; accept either.
+            val on = prefs.getBoolean("voice_alert_enabled", false) ||
+                getSharedPreferences("vasatey_settings", MODE_PRIVATE)
+                    .getBoolean("voice_alert_enabled", false)
+            if (!on) return
             val svc = Intent(this, VoskWakeWordService::class.java)
             stopService(svc)
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) startForegroundService(svc) else startService(svc)
@@ -190,8 +198,10 @@ class EditProfileActivity : AppCompatActivity() {
             binding.phoneInputLayout.error = "Phone number is required"
             return false
         }
-        if (wakeWord.isEmpty() || wakeWord.length < 3) {
-            binding.wakeWordInputLayout.error = "Wake word must be at least 3 characters"
+        // Telugu words can be short in UTF-16 units (e.g. "సహాయం"); require 2+ chars.
+        val minLen = if (VoiceLanguage.get(this) == VoiceLanguage.TE) 2 else 3
+        if (wakeWord.isEmpty() || wakeWord.length < minLen) {
+            binding.wakeWordInputLayout.error = "Wake word must be at least $minLen characters"
             return false
         }
         return true
@@ -200,7 +210,9 @@ class EditProfileActivity : AppCompatActivity() {
     private fun updateProfileLocal(name: String, phone: String, wakeWord: String) {
         SessionManager.updateUserName(name)
         SessionManager.updateUserPhone(phone)
-        prefs.edit().putString("wake_word", wakeWord.replace("\"", "").lowercase()).apply()
+        // Preserve Telugu script as-is; lowercase English only.
+        val clean = VoiceLanguage.normalizeWakeWord(wakeWord, VoiceLanguage.get(this))
+        prefs.edit().putString("wake_word", clean).apply()
 
         Toast.makeText(this, "Profile updated successfully!", Toast.LENGTH_SHORT).show()
         restartVoiceService()

@@ -43,10 +43,14 @@ class SettingsActivity : AppCompatActivity() {
         
         binding.switchDoubleWord.isChecked = prefs.getBoolean("double_word_enabled", true)
 
-        // Wake word from local prefs
+        // Wake word from local prefs (language-aware default: English "help me" / Telugu "సహాయం")
         val vasateyPrefs = getSharedPreferences("vasatey_prefs", MODE_PRIVATE)
-        val wakeWord = vasateyPrefs.getString("wake_word", "help me")
-        binding.currentWakeWord.text = "Current: $wakeWord"
+        val lang = com.sriox.vasateysec.utils.VoiceLanguage.get(this)
+        val wakeWord = vasateyPrefs.getString(
+            "wake_word",
+            com.sriox.vasateysec.utils.VoiceLanguage.defaultWakeWord(lang)
+        )
+        binding.currentWakeWord.text = "Current ($lang): $wakeWord"
     }
 
     private fun setupSwitches() {
@@ -99,10 +103,11 @@ class SettingsActivity : AppCompatActivity() {
     }
     
     private fun saveWakeWord(wakeWord: String) {
-        val trimmed = wakeWord.replace("\"", "").trim().lowercase()
+        val lang = com.sriox.vasateysec.utils.VoiceLanguage.get(this)
+        val trimmed = com.sriox.vasateysec.utils.VoiceLanguage.normalizeWakeWord(wakeWord, lang)
         if (trimmed.isEmpty()) return
         getSharedPreferences("vasatey_prefs", MODE_PRIVATE).edit().putString("wake_word", trimmed).apply()
-        binding.currentWakeWord.text = "Current: $trimmed"
+        binding.currentWakeWord.text = "Current ($lang): $trimmed"
         showToast("Wake word updated to '$trimmed'")
         val serviceIntent = Intent(this@SettingsActivity, VoskWakeWordService::class.java)
         stopService(serviceIntent)

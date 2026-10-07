@@ -395,7 +395,11 @@ class HomeActivity : AppCompatActivity(), NavigationView.OnNavigationItemSelecte
     }
 
     private fun loadUserProfile() {
-        val wakeWord = getSharedPreferences("vasatey_prefs", MODE_PRIVATE).getString("wake_word", "help me") ?: "help me"
+        val lang = com.sriox.vasateysec.utils.VoiceLanguage.get(this)
+        val wakeWord = getSharedPreferences("vasatey_prefs", MODE_PRIVATE).getString(
+            "wake_word",
+            com.sriox.vasateysec.utils.VoiceLanguage.defaultWakeWord(lang)
+        ) ?: com.sriox.vasateysec.utils.VoiceLanguage.defaultWakeWord(lang)
         binding.voiceStatusText.text = "Say '$wakeWord' to alert"
     }
 

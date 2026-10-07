@@ -147,7 +147,9 @@ class VoskWakeWordService : Service(), RecognitionListener {
 
     @Throws(IOException::class)
     private fun startWithModel(model: Model?, wakeWord: String) {
-        val recognizer = Recognizer(model, 16000f, "[\"$wakeWord\", \"[unk]\"]")
+        // Escape for JSON grammar array: ["wake word", "[unk]"]
+        val escaped = wakeWord.replace("\\", "\\\\").replace("\"", "\\\"")
+        val recognizer = Recognizer(model, 16000f, "[\"$escaped\", \"[unk]\"]")
         speechService = SpeechService(recognizer, 16000f)
         startListening()
     }
@@ -226,9 +228,10 @@ class VoskWakeWordService : Service(), RecognitionListener {
                 val currentTime = SystemClock.elapsedRealtime()
                 val settings = getSharedPreferences("vasatey_settings", MODE_PRIVATE)
                 val isDoubleWordEnabled = settings.getBoolean("double_word_enabled", true)
+                val lang = com.sriox.vasateysec.utils.VoiceLanguage.get(this@VoskWakeWordService)
                 val wakeWord = com.sriox.vasateysec.utils.VoiceLanguage.getWakeWord(this@VoskWakeWordService)
 
-                if (resultText.contains(wakeWord, ignoreCase = true)) {
+                if (com.sriox.vasateysec.utils.VoiceLanguage.matches(resultText, wakeWord, lang)) {
                     if (isDoubleWordEnabled) {
                         handleDoubleWordDetection(currentTime, wakeWord)
                     } else {
@@ -314,7 +317,12 @@ class VoskWakeWordService : Service(), RecognitionListener {
 
     private fun getResultTextFromJson(json: String): String {
         return try {
-            json.substringAfter("\"text\" : \"").substringBefore("\"")
+            // Vosk emits {"text": "..."} (no guaranteed spacing) — parse properly
+            // so Telugu script isn't mangled by naive substring logic.
+            val obj = org.json.JSONObject(json)
+            // Prefer "text"; fall back to "partial" for partial-result callbacks.
+            val t = obj.optString("text", "")
+            if (t.isNotBlank()) t else obj.optString("partial", "")
         } catch (e: Exception) { "" }
     }
 
